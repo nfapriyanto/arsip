@@ -1,0 +1,387 @@
+<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Arsip extends CI_Controller {
+
+    public function __construct()
+    {
+        parent::__construct();
+        if(!$this->session->userdata('id')){
+            redirect('admin');
+        } else {
+            if($this->session->userdata('level') != 'Admin'){
+                redirect('user/dashboard');
+            }
+        }
+        $this->load->library('upload');
+    }
+
+    public function index()
+    {
+        $data['title'] = 'Data Kategori Arsip';
+        
+        // Ambil semua kategori dengan total arsip
+        $this->db->select('k.id, k.nama, k.deskripsi, COUNT(a.id) as total_arsip');
+        $this->db->from('tb_kategori_arsip k');
+        $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
+        $this->db->group_by('k.id, k.nama, k.deskripsi');
+        $this->db->order_by('k.nama', 'ASC');
+        $kategori = $this->db->get()->result();
+        
+        $data['kategori'] = $kategori;
+        
+        // Ambil semua kategori untuk dropdown form
+        $data['list_kategori'] = $this->m_model->get('tb_kategori_arsip')->result();
+        
+        $this->load->view('admin/templates/header', $data);
+        $this->load->view('admin/templates/sidebar');
+        $this->load->view('admin/arsip', $data);
+        $this->load->view('admin/templates/footer');
+    }
+
+    public function kategori($id = null)
+    {
+        if(empty($id) || !is_numeric($id)) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak valid!');
+            redirect('admin/arsip');
+        }
+        
+        // Ambil data kategori
+        $where_kategori = array('id' => $id);
+        $kategori = $this->m_model->get_where($where_kategori, 'tb_kategori_arsip')->row();
+        
+        if(!$kategori) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak ditemukan!');
+            redirect('admin/arsip');
+        }
+        
+        $data['title'] = 'Daftar Arsip: ' . $kategori->nama;
+        
+        // Ambil semua arsip dengan kategori_id yang sama
+        $where = array('kategori_id' => $id);
+        $this->db->order_by('createDate', 'DESC');
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->result();
+        
+        $data['arsip'] = $arsip;
+        $data['kategori_id'] = $id;
+        $data['kategori_nama'] = $kategori->nama;
+        
+        // Ambil semua kategori untuk dropdown form
+        $data['list_kategori'] = $this->m_model->get('tb_kategori_arsip')->result();
+        
+        $this->load->view('admin/templates/header', $data);
+        $this->load->view('admin/templates/sidebar');
+        $this->load->view('admin/arsip', $data);
+        $this->load->view('admin/templates/footer');
+    }
+
+    public function delete($id)
+    {
+        // Ambil data arsip untuk mendapatkan kategori_id dan path_file sebelum dihapus
+        $where = array('id' => $id);
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
+        $kategori_id = $arsip ? $arsip->kategori_id : null;
+        $path_file = $arsip ? $arsip->path_file : null;
+
+        // Hapus file fisik jika ada
+        if($path_file && file_exists($path_file)) {
+            @unlink($path_file);
+        }
+
+        // Hapus data dari database
+        $this->m_model->delete($where, 'tb_arsip');
+        
+        // Log aksi delete
+        if($arsip) {
+            $this->logAksi($id, 'Delete', 'Arsip dihapus');
+        }
+        
+        $this->session->set_flashdata('pesan', 'Data arsip berhasil dihapus!');
+        
+        // Redirect kembali ke halaman kategori arsip jika ada kategori_id
+        if(!empty($kategori_id)) {
+            redirect('admin/arsip/kategori/' . $kategori_id);
+        } else {
+            redirect('admin/arsip');
+        }
+    }
+
+    public function insert_kategori()
+    {
+        date_default_timezone_set('Asia/Jakarta');
+        $nama       = $this->input->post('nama');
+        $deskripsi  = $this->input->post('deskripsi');
+        $createDate = date('Y-m-d H:i:s');
+
+        $data = array(
+            'nama'          => $nama,
+            'deskripsi'     => $deskripsi,
+            'createDate'    => $createDate,
+        );
+
+        $this->m_model->insert($data, 'tb_kategori_arsip');
+        $this->session->set_flashdata('pesan', 'Kategori berhasil ditambahkan!');
+        redirect('admin/arsip');
+    }
+
+    public function insert()
+    {
+        date_default_timezone_set('Asia/Jakarta');
+        
+        $kategori_id    = $this->input->post('kategori_id');
+        $nomor_arsip    = $this->input->post('nomor_arsip');
+        $judul          = $this->input->post('judul');
+        $deskripsi      = $this->input->post('deskripsi');
+        $tanggal_dokumen = $this->input->post('tanggal_dokumen');
+        $pembuat        = $this->input->post('pembuat');
+        $createDate     = date('Y-m-d H:i:s');
+        
+        // Validasi
+        if(empty($kategori_id) || empty($judul)) {
+            $this->session->set_flashdata('pesan', 'Kategori dan Judul harus diisi!');
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+
+        // Konfigurasi upload
+        $config['upload_path'] = './uploads/arsip/';
+        $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
+        $config['max_size'] = 10240; // 10MB
+        $config['encrypt_name'] = TRUE;
+        
+        // Buat folder jika belum ada
+        if(!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, TRUE);
+        }
+        
+        $this->upload->initialize($config);
+        
+        if (!$this->upload->do_upload('file_arsip')) {
+            $error = $this->upload->display_errors();
+            $this->session->set_flashdata('pesan', 'Upload gagal: ' . $error);
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+        
+        $upload_data = $this->upload->data();
+        $nama_file = $upload_data['file_name'];
+        $path_file = $config['upload_path'] . $nama_file;
+        $ukuran_file = $upload_data['file_size'];
+        $tipe_file = $upload_data['file_type'];
+        
+        // Jika nomor arsip kosong, generate otomatis
+        if(empty($nomor_arsip)) {
+            $nomor_arsip = $this->generateNomorArsip($kategori_id);
+        }
+
+        $data = array(
+            'kategori_id'   => $kategori_id,
+            'nomor_arsip'   => $nomor_arsip,
+            'judul'         => $judul,
+            'deskripsi'      => $deskripsi,
+            'nama_file'      => $nama_file,
+            'path_file'      => $path_file,
+            'ukuran_file'    => $ukuran_file,
+            'tipe_file'      => $tipe_file,
+            'tanggal_dokumen' => !empty($tanggal_dokumen) ? $tanggal_dokumen : NULL,
+            'pembuat'        => $pembuat,
+            'status'         => 'Aktif',
+            'createDate'     => $createDate,
+            'created_by'     => $this->session->userdata('id')
+        );
+
+        $this->m_model->insert($data, 'tb_arsip');
+        
+        // Ambil ID arsip yang baru saja diinsert
+        $arsip_id = $this->db->insert_id();
+        
+        // Log aksi upload
+        $this->logAksi($arsip_id, 'Upload', 'Arsip baru diupload');
+        
+        $this->session->set_flashdata('pesan', 'Arsip berhasil ditambahkan!');
+        redirect('admin/arsip/kategori/' . $kategori_id);
+    }
+    
+    private function generateNomorArsip($kategori_id)
+    {
+        // Format: KAT-YYYYMMDD-XXX
+        // KAT = 3 huruf pertama kategori
+        $kategori = $this->m_model->get_where(array('id' => $kategori_id), 'tb_kategori_arsip')->row();
+        $prefix = strtoupper(substr($kategori->nama, 0, 3));
+        $date = date('Ymd');
+        
+        // Cari nomor terakhir hari ini
+        $this->db->like('nomor_arsip', $prefix . '-' . $date, 'after');
+        $this->db->order_by('nomor_arsip', 'DESC');
+        $last = $this->db->get('tb_arsip')->row();
+        
+        if($last) {
+            $last_num = intval(substr($last->nomor_arsip, -3));
+            $new_num = $last_num + 1;
+        } else {
+            $new_num = 1;
+        }
+        
+        return $prefix . '-' . $date . '-' . str_pad($new_num, 3, '0', STR_PAD_LEFT);
+    }
+    
+    public function download($id)
+    {
+        $where = array('id' => $id);
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
+        
+        if(!$arsip || !file_exists($arsip->path_file)) {
+            $this->session->set_flashdata('pesan', 'File tidak ditemukan!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        // Log aksi download
+        $this->logAksi($id, 'Download', 'Arsip didownload');
+        
+        // Download file
+        $this->load->helper('download');
+        force_download($arsip->nama_file, file_get_contents($arsip->path_file));
+    }
+    
+    public function view($id)
+    {
+        $where = array('id' => $id);
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
+        
+        if(!$arsip) {
+            show_404();
+            return;
+        }
+        
+        // Log aksi view
+        $this->logAksi($id, 'View', 'Arsip dilihat');
+        
+        // Jika file adalah gambar atau PDF, tampilkan di browser
+        $image_types = array('image/jpeg', 'image/jpg', 'image/png', 'image/gif');
+        if(in_array($arsip->tipe_file, $image_types)) {
+            header('Content-Type: ' . $arsip->tipe_file);
+            readfile($arsip->path_file);
+        } elseif($arsip->tipe_file == 'application/pdf') {
+            header('Content-Type: application/pdf');
+            readfile($arsip->path_file);
+        } else {
+            // Untuk file lain, force download
+            $this->download($id);
+        }
+    }
+
+    public function update_kategori()
+    {
+        $id      = $this->input->post('id');
+        $nama    = $this->input->post('nama');
+        $deskripsi = $this->input->post('deskripsi');
+        
+        $where = array('id' => $id);
+        $data = array(
+            'nama'      => $nama,
+            'deskripsi' => $deskripsi
+        );
+
+        $this->m_model->update($where, $data, 'tb_kategori_arsip');
+        $this->session->set_flashdata('pesan', 'Kategori berhasil diubah!');
+        redirect('admin/arsip');
+    }
+
+    public function update()
+    {
+        $id              = $this->input->post('id');
+        $kategori_id     = $this->input->post('kategori_id');
+        $nomor_arsip     = $this->input->post('nomor_arsip');
+        $judul           = $this->input->post('judul');
+        $deskripsi       = $this->input->post('deskripsi');
+        $tanggal_dokumen = $this->input->post('tanggal_dokumen');
+        $pembuat         = $this->input->post('pembuat');
+        $status          = $this->input->post('status');
+        $updateDate      = date('Y-m-d H:i:s');
+
+        $where = array('id' => $id);
+        
+        $data = array(
+            'kategori_id'   => $kategori_id,
+            'nomor_arsip'   => $nomor_arsip,
+            'judul'         => $judul,
+            'deskripsi'      => $deskripsi,
+            'tanggal_dokumen' => !empty($tanggal_dokumen) ? $tanggal_dokumen : NULL,
+            'pembuat'        => $pembuat,
+            'status'         => $status,
+            'updateDate'     => $updateDate
+        );
+        
+        // Jika ada file baru diupload
+        if(!empty($_FILES['file_arsip']['name'])) {
+            // Hapus file lama
+            $arsip_lama = $this->m_model->get_where($where, 'tb_arsip')->row();
+            if($arsip_lama && file_exists($arsip_lama->path_file)) {
+                @unlink($arsip_lama->path_file);
+            }
+            
+            // Upload file baru
+            $config['upload_path'] = './uploads/arsip/';
+            $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
+            $config['max_size'] = 10240;
+            $config['encrypt_name'] = TRUE;
+            
+            $this->upload->initialize($config);
+            
+            if ($this->upload->do_upload('file_arsip')) {
+                $upload_data = $this->upload->data();
+                $data['nama_file'] = $upload_data['file_name'];
+                $data['path_file'] = $config['upload_path'] . $upload_data['file_name'];
+                $data['ukuran_file'] = $upload_data['file_size'];
+                $data['tipe_file'] = $upload_data['file_type'];
+            }
+        }
+
+        $this->m_model->update($where, $data, 'tb_arsip');
+        
+        // Log aksi update
+        $this->logAksi($id, 'Update', 'Arsip diupdate');
+        
+        $this->session->set_flashdata('pesan', 'Arsip berhasil diubah!');
+        redirect('admin/arsip/kategori/' . $kategori_id);
+    }
+
+    public function riwayat($id)
+    {
+        $where = array('id' => $id);
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
+        
+        if(!$arsip) {
+            $this->session->set_flashdata('pesan', 'Arsip tidak ditemukan!');
+            redirect('admin/arsip');
+            return;
+        }
+
+        $data['arsip'] = $arsip;
+        $whereRiwayat = array('arsip_id' => $id);
+        $this->db->order_by('createDate', 'DESC');
+        $data['riwayat'] = $this->m_model->get_where($whereRiwayat, 'tb_riwayat_arsip')->result();
+        $data['title'] = 'Riwayat Arsip : ' . $arsip->judul;
+        
+        $this->load->view('admin/templates/header', $data);
+        $this->load->view('admin/templates/sidebar');
+        $this->load->view('admin/riwayatArsip', $data);
+        $this->load->view('admin/templates/footer');
+    }
+    
+    private function logAksi($arsip_id, $aksi, $keterangan = '')
+    {
+        date_default_timezone_set('Asia/Jakarta');
+        $data = array(
+            'arsip_id'  => $arsip_id,
+            'user_id'   => $this->session->userdata('id'),
+            'aksi'      => $aksi,
+            'keterangan' => $keterangan,
+            'ip_address' => $this->input->ip_address(),
+            'createDate' => date('Y-m-d H:i:s')
+        );
+        $this->m_model->insert($data, 'tb_riwayat_arsip');
+    }
+}
+
