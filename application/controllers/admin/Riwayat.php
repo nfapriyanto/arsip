@@ -20,7 +20,7 @@ class Riwayat extends CI_Controller {
         $data['title'] = 'Riwayat Akses Arsip';
         
         // Get riwayat with arsip and user info
-        $this->db->select('r.*, a.judul as arsip_judul, a.nomor_arsip, u.nama as user_nama');
+        $this->db->select('r.*, a.no_berkas, a.uraian_masalah_kegiatan as arsip_judul, u.nama as user_nama');
         $this->db->from('tb_riwayat_arsip r');
         $this->db->join('tb_arsip a', 'a.id = r.arsip_id', 'left');
         $this->db->join('tb_user u', 'u.id = r.user_id', 'left');
@@ -53,7 +53,7 @@ class Riwayat extends CI_Controller {
         $data['tgl_akhir']  = $tgl_akhir;
 
         $data['title'] = 'Cetak Riwayat Arsip';
-        $this->db->select('r.*, a.judul as arsip_judul, a.nomor_arsip, u.nama as user_nama');
+        $this->db->select('r.*, a.no_berkas, a.uraian_masalah_kegiatan as arsip_judul, u.nama as user_nama');
         $this->db->from('tb_riwayat_arsip r');
         $this->db->join('tb_arsip a', 'a.id = r.arsip_id', 'left');
         $this->db->join('tb_user u', 'u.id = r.user_id', 'left');
@@ -76,7 +76,7 @@ class Riwayat extends CI_Controller {
         $data['tgl_akhir']  = $tgl_akhir;
 
         $data['title'] = 'Export Excel Riwayat Arsip';
-        $this->db->select('r.*, a.judul as arsip_judul, a.nomor_arsip, u.nama as user_nama');
+        $this->db->select('r.*, a.no_berkas, a.uraian_masalah_kegiatan as arsip_judul, u.nama as user_nama');
         $this->db->from('tb_riwayat_arsip r');
         $this->db->join('tb_arsip a', 'a.id = r.arsip_id', 'left');
         $this->db->join('tb_user u', 'u.id = r.user_id', 'left');

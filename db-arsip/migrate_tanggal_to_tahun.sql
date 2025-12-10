@@ -14,3 +14,5 @@ WHERE `tanggal_dokumen` IS NOT NULL;
 ALTER TABLE `tb_arsip` 
 DROP COLUMN `tanggal_dokumen`;
 
+
+

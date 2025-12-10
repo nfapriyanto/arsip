@@ -159,12 +159,17 @@
                             <thead>
                                 <tr>
                                     <th width="5px">No</th>
-                                    <th>Nomor Arsip</th>
-                                    <th>Judul</th>
-                                    <th>Tahun Dokumen</th>
+                                    <th>NO BERKAS</th>
+                                    <th>NO URUT</th>
+                                    <th>KODE</th>
+                                    <th>INDEKS/PEKERJAAN</th>
+                                    <th>URAIAN MASALAH/KEGIATAN</th>
+                                    <th>TAHUN</th>
+                                    <th>JUMLAH BERKAS</th>
+                                    <th>ASLI/KOPI</th>
+                                    <th>BOX</th>
+                                    <th>KLASIFIKASI KEAMANAN</th>
                                     <th>File</th>
-                                    <th>Ukuran</th>
-                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -175,21 +180,31 @@
                                 ?>
                                     <tr>
                                         <td><?php echo $no++; ?></td>
-                                        <td><strong><?php echo $ars->nomor_arsip; ?></strong></td>
-                                        <td><?php echo $ars->judul; ?></td>
-                                        <td><?php echo $ars->tahun_dokumen ? $ars->tahun_dokumen : '-'; ?></td>
+                                        <td><strong><?php echo $ars->no_berkas ? $ars->no_berkas : '-'; ?></strong></td>
+                                        <td><?php echo $ars->no_urut ? $ars->no_urut : '-'; ?></td>
+                                        <td><?php echo $ars->kode ? $ars->kode : '-'; ?></td>
+                                        <td><?php echo $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-'; ?></td>
+                                        <td><?php echo $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-'; ?></td>
+                                        <td><?php echo $ars->tahun ? $ars->tahun : '-'; ?></td>
+                                        <td><?php echo $ars->jumlah_berkas ? $ars->jumlah_berkas : 1; ?></td>
                                         <td>
-                                            <i class="fa fa-file"></i> <?php echo $ars->nama_file; ?>
-                                        </td>
-                                        <td><?php echo $this->m_model->formatBytes($ars->ukuran_file); ?></td>
-                                        <td>
-                                            <?php if($ars->status == 'Aktif'): ?>
-                                                <span class="label label-success">Aktif</span>
-                                            <?php elseif($ars->status == 'Tidak Aktif'): ?>
-                                                <span class="label label-warning">Tidak Aktif</span>
+                                            <?php if(isset($ars->asli_kopi) && $ars->asli_kopi): ?>
+                                                <span class="label label-info"><?php echo $ars->asli_kopi; ?></span>
                                             <?php else: ?>
-                                                <span class="label label-default">Arsip</span>
+                                                <span class="text-muted">-</span>
                                             <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(isset($ars->box) && $ars->box): ?>
+                                                <span class="badge bg-green"><?php echo $ars->box; ?></span>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo $ars->klasifikasi_keamanan ? $ars->klasifikasi_keamanan : '-'; ?></td>
+                                        <td>
+                                            <i class="fa fa-file"></i> <?php echo $ars->nama_file; ?><br>
+                                            <small><?php echo $this->m_model->formatBytes($ars->ukuran_file); ?></small>
                                         </td>
                                         <td>
                                             <!-- Tombol View -->
@@ -325,25 +340,61 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Nomor Arsip</label>
-                <input type="text" class="form-control" name="nomor_arsip" placeholder="Kosongkan untuk generate otomatis">
-                <small class="text-muted">Jika dikosongkan, nomor arsip akan digenerate otomatis</small>
+                <label>NO BERKAS</label>
+                <input type="text" class="form-control" name="no_berkas" placeholder="Kosongkan untuk generate otomatis">
+                <small class="text-muted">Jika dikosongkan, nomor berkas akan digenerate otomatis</small>
             </div>
             <div class="form-group">
-                <label>Judul <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="judul" placeholder="Judul Arsip" required>
+                <label>NO URUT</label>
+                <input type="number" class="form-control" name="no_urut" placeholder="Nomor Urut" min="1">
             </div>
             <div class="form-group">
-                <label>Deskripsi</label>
-                <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Arsip" rows="3"></textarea>
+                <label>KODE</label>
+                <input type="text" class="form-control" name="kode" placeholder="Kode Arsip">
             </div>
             <div class="form-group">
-                <label>Tahun Dokumen</label>
-                <input type="number" class="form-control" name="tahun_dokumen" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>">
+                <label>INDEKS/PEKERJAAN</label>
+                <input type="text" class="form-control" name="indeks_pekerjaan" placeholder="Indeks/Pekerjaan">
             </div>
             <div class="form-group">
-                <label>Pembuat</label>
-                <input type="text" class="form-control" name="pembuat" placeholder="Nama Pembuat Dokumen">
+                <label>URAIAN MASALAH/KEGIATAN</label>
+                <textarea class="form-control" name="uraian_masalah_kegiatan" placeholder="Uraian Masalah/Kegiatan" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>TAHUN</label>
+                <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>">
+            </div>
+            <div class="form-group">
+                <label>JUMLAH BERKAS</label>
+                <input type="number" class="form-control" name="jumlah_berkas" placeholder="Jumlah Berkas" min="1" value="1">
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>ASLI/KOPI</label>
+                        <select class="form-control" name="asli_kopi">
+                            <option value="">-- Pilih --</option>
+                            <option value="Asli">Asli</option>
+                            <option value="Kopi">Kopi</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>BOX</label>
+                        <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>KLASIFIKASI KEAMANAN DAN AKSES ARSIP DINAMIS</label>
+                <select class="form-control" name="klasifikasi_keamanan">
+                    <option value="">-- Pilih Klasifikasi --</option>
+                    <option value="Umum">Umum</option>
+                    <option value="Terbatas">Terbatas</option>
+                    <option value="Rahasia">Rahasia</option>
+                    <option value="Sangat Rahasia">Sangat Rahasia</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>File Arsip <span class="text-danger">*</span></label>
@@ -463,31 +514,59 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Nomor Arsip</label>
-                        <input type="text" class="form-control" name="nomor_arsip" value="<?php echo $ars->nomor_arsip; ?>" required>
+                        <label>NO BERKAS</label>
+                        <input type="text" class="form-control" name="no_berkas" value="<?php echo isset($ars->no_berkas) ? $ars->no_berkas : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <label>Judul <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="judul" value="<?php echo $ars->judul; ?>" required>
+                        <label>NO URUT</label>
+                        <input type="number" class="form-control" name="no_urut" placeholder="Nomor Urut" min="1" value="<?php echo isset($ars->no_urut) ? $ars->no_urut : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <label>Deskripsi</label>
-                        <textarea class="form-control" name="deskripsi" rows="3"><?php echo $ars->deskripsi; ?></textarea>
+                        <label>KODE</label>
+                        <input type="text" class="form-control" name="kode" value="<?php echo isset($ars->kode) ? $ars->kode : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <label>Tahun Dokumen</label>
-                        <input type="number" class="form-control" name="tahun_dokumen" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo $ars->tahun_dokumen ? $ars->tahun_dokumen : date('Y'); ?>">
+                        <label>INDEKS/PEKERJAAN</label>
+                        <input type="text" class="form-control" name="indeks_pekerjaan" value="<?php echo isset($ars->indeks_pekerjaan) ? $ars->indeks_pekerjaan : ''; ?>">
                     </div>
                     <div class="form-group">
-                        <label>Pembuat</label>
-                        <input type="text" class="form-control" name="pembuat" value="<?php echo $ars->pembuat; ?>">
+                        <label>URAIAN MASALAH/KEGIATAN</label>
+                        <textarea class="form-control" name="uraian_masalah_kegiatan" rows="3"><?php echo isset($ars->uraian_masalah_kegiatan) ? $ars->uraian_masalah_kegiatan : ''; ?></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Status</label>
-                        <select class="form-control" name="status">
-                            <option value="Aktif" <?php echo ($ars->status == 'Aktif') ? 'selected' : ''; ?>>Aktif</option>
-                            <option value="Tidak Aktif" <?php echo ($ars->status == 'Tidak Aktif') ? 'selected' : ''; ?>>Tidak Aktif</option>
-                            <option value="Arsip" <?php echo ($ars->status == 'Arsip') ? 'selected' : ''; ?>>Arsip</option>
+                        <label>TAHUN</label>
+                        <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo isset($ars->tahun) ? $ars->tahun : date('Y'); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>JUMLAH BERKAS</label>
+                        <input type="number" class="form-control" name="jumlah_berkas" placeholder="Jumlah Berkas" min="1" value="<?php echo isset($ars->jumlah_berkas) ? $ars->jumlah_berkas : 1; ?>">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>ASLI/KOPI</label>
+                                <select class="form-control" name="asli_kopi">
+                                    <option value="">-- Pilih --</option>
+                                    <option value="Asli" <?php echo (isset($ars->asli_kopi) && $ars->asli_kopi == 'Asli') ? 'selected' : ''; ?>>Asli</option>
+                                    <option value="Kopi" <?php echo (isset($ars->asli_kopi) && $ars->asli_kopi == 'Kopi') ? 'selected' : ''; ?>>Kopi</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>BOX</label>
+                                <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1" value="<?php echo isset($ars->box) ? $ars->box : ''; ?>">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>KLASIFIKASI KEAMANAN DAN AKSES ARSIP DINAMIS</label>
+                        <select class="form-control" name="klasifikasi_keamanan">
+                            <option value="">-- Pilih Klasifikasi --</option>
+                            <option value="Umum" <?php echo (isset($ars->klasifikasi_keamanan) && $ars->klasifikasi_keamanan == 'Umum') ? 'selected' : ''; ?>>Umum</option>
+                            <option value="Terbatas" <?php echo (isset($ars->klasifikasi_keamanan) && $ars->klasifikasi_keamanan == 'Terbatas') ? 'selected' : ''; ?>>Terbatas</option>
+                            <option value="Rahasia" <?php echo (isset($ars->klasifikasi_keamanan) && $ars->klasifikasi_keamanan == 'Rahasia') ? 'selected' : ''; ?>>Rahasia</option>
+                            <option value="Sangat Rahasia" <?php echo (isset($ars->klasifikasi_keamanan) && $ars->klasifikasi_keamanan == 'Sangat Rahasia') ? 'selected' : ''; ?>>Sangat Rahasia</option>
                         </select>
                     </div>
                     <div class="form-group">

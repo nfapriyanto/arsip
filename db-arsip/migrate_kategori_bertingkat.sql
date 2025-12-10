@@ -15,3 +15,5 @@ ADD KEY `idx_parent_id` (`parent_id`);
 -- FOREIGN KEY (`parent_id`) REFERENCES `tb_kategori_arsip` (`id`) 
 -- ON DELETE SET NULL ON UPDATE CASCADE;
 
+
+

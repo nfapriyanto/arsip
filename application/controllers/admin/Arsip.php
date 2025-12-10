@@ -182,17 +182,22 @@ class Arsip extends CI_Controller {
     {
         date_default_timezone_set('Asia/Jakarta');
         
-        $kategori_id    = $this->input->post('kategori_id');
-        $nomor_arsip    = $this->input->post('nomor_arsip');
-        $judul          = $this->input->post('judul');
-        $deskripsi      = $this->input->post('deskripsi');
-        $tahun_dokumen = $this->input->post('tahun_dokumen');
-        $pembuat        = $this->input->post('pembuat');
-        $createDate     = date('Y-m-d H:i:s');
+        $kategori_id                = $this->input->post('kategori_id');
+        $no_berkas                  = $this->input->post('no_berkas');
+        $no_urut                    = $this->input->post('no_urut');
+        $kode                       = $this->input->post('kode');
+        $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan');
+        $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan');
+        $tahun                      = $this->input->post('tahun');
+        $jumlah_berkas              = $this->input->post('jumlah_berkas');
+        $asli_kopi                  = $this->input->post('asli_kopi');
+        $box                        = $this->input->post('box');
+        $klasifikasi_keamanan       = $this->input->post('klasifikasi_keamanan');
+        $createDate                 = date('Y-m-d H:i:s');
         
         // Validasi
-        if(empty($kategori_id) || empty($judul)) {
-            $this->session->set_flashdata('pesan', 'Kategori dan Judul harus diisi!');
+        if(empty($kategori_id)) {
+            $this->session->set_flashdata('pesan', 'Kategori harus diisi!');
             redirect('admin/arsip/kategori/' . $kategori_id);
             return;
         }
@@ -223,25 +228,34 @@ class Arsip extends CI_Controller {
         $ukuran_file = $upload_data['file_size'];
         $tipe_file = $upload_data['file_type'];
         
-        // Jika nomor arsip kosong, generate otomatis
-        if(empty($nomor_arsip)) {
-            $nomor_arsip = $this->generateNomorArsip($kategori_id);
+        // Jika no_berkas kosong, generate otomatis
+        if(empty($no_berkas)) {
+            $no_berkas = $this->generateNoBerkas($kategori_id);
+        }
+        
+        // Default jumlah_berkas jika kosong
+        if(empty($jumlah_berkas)) {
+            $jumlah_berkas = 1;
         }
 
         $data = array(
-            'kategori_id'   => $kategori_id,
-            'nomor_arsip'   => $nomor_arsip,
-            'judul'         => $judul,
-            'deskripsi'      => $deskripsi,
-            'nama_file'      => $nama_file,
-            'path_file'      => $path_file,
-            'ukuran_file'    => $ukuran_file,
-            'tipe_file'      => $tipe_file,
-            'tahun_dokumen' => !empty($tahun_dokumen) ? $tahun_dokumen : NULL,
-            'pembuat'        => $pembuat,
-            'status'         => 'Aktif',
-            'createDate'     => $createDate,
-            'created_by'     => $this->session->userdata('id')
+            'kategori_id'            => $kategori_id,
+            'no_berkas'              => $no_berkas,
+            'no_urut'                => !empty($no_urut) ? $no_urut : NULL,
+            'kode'                   => $kode,
+            'indeks_pekerjaan'       => $indeks_pekerjaan,
+            'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
+            'tahun'                  => !empty($tahun) ? $tahun : NULL,
+            'jumlah_berkas'          => $jumlah_berkas,
+            'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
+            'box'                    => $box,
+            'klasifikasi_keamanan'   => $klasifikasi_keamanan,
+            'nama_file'              => $nama_file,
+            'path_file'              => $path_file,
+            'ukuran_file'            => $ukuran_file,
+            'tipe_file'              => $tipe_file,
+            'createDate'             => $createDate,
+            'created_by'             => $this->session->userdata('id')
         );
 
         $this->m_model->insert($data, 'tb_arsip');
@@ -256,7 +270,7 @@ class Arsip extends CI_Controller {
         redirect('admin/arsip/kategori/' . $kategori_id);
     }
     
-    private function generateNomorArsip($kategori_id)
+    private function generateNoBerkas($kategori_id)
     {
         // Format: KAT-YYYYMMDD-XXX
         // KAT = 3 huruf pertama kategori
@@ -265,12 +279,12 @@ class Arsip extends CI_Controller {
         $date = date('Ymd');
         
         // Cari nomor terakhir hari ini
-        $this->db->like('nomor_arsip', $prefix . '-' . $date, 'after');
-        $this->db->order_by('nomor_arsip', 'DESC');
+        $this->db->like('no_berkas', $prefix . '-' . $date, 'after');
+        $this->db->order_by('no_berkas', 'DESC');
         $last = $this->db->get('tb_arsip')->row();
         
         if($last) {
-            $last_num = intval(substr($last->nomor_arsip, -3));
+            $last_num = intval(substr($last->no_berkas, -3));
             $new_num = $last_num + 1;
         } else {
             $new_num = 1;
@@ -344,27 +358,35 @@ class Arsip extends CI_Controller {
 
     public function update()
     {
-        $id              = $this->input->post('id');
-        $kategori_id     = $this->input->post('kategori_id');
-        $nomor_arsip     = $this->input->post('nomor_arsip');
-        $judul           = $this->input->post('judul');
-        $deskripsi       = $this->input->post('deskripsi');
-        $tahun_dokumen = $this->input->post('tahun_dokumen');
-        $pembuat         = $this->input->post('pembuat');
-        $status          = $this->input->post('status');
-        $updateDate      = date('Y-m-d H:i:s');
+        $id                      = $this->input->post('id');
+        $kategori_id             = $this->input->post('kategori_id');
+        $no_berkas               = $this->input->post('no_berkas');
+        $no_urut                 = $this->input->post('no_urut');
+        $kode                    = $this->input->post('kode');
+        $indeks_pekerjaan        = $this->input->post('indeks_pekerjaan');
+        $uraian_masalah_kegiatan = $this->input->post('uraian_masalah_kegiatan');
+        $tahun                   = $this->input->post('tahun');
+        $jumlah_berkas           = $this->input->post('jumlah_berkas');
+        $asli_kopi               = $this->input->post('asli_kopi');
+        $box                     = $this->input->post('box');
+        $klasifikasi_keamanan    = $this->input->post('klasifikasi_keamanan');
+        $updateDate              = date('Y-m-d H:i:s');
 
         $where = array('id' => $id);
         
         $data = array(
-            'kategori_id'   => $kategori_id,
-            'nomor_arsip'   => $nomor_arsip,
-            'judul'         => $judul,
-            'deskripsi'      => $deskripsi,
-            'tahun_dokumen' => !empty($tahun_dokumen) ? $tahun_dokumen : NULL,
-            'pembuat'        => $pembuat,
-            'status'         => $status,
-            'updateDate'     => $updateDate
+            'kategori_id'            => $kategori_id,
+            'no_berkas'              => $no_berkas,
+            'no_urut'                => !empty($no_urut) ? $no_urut : NULL,
+            'kode'                   => $kode,
+            'indeks_pekerjaan'       => $indeks_pekerjaan,
+            'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
+            'tahun'                  => !empty($tahun) ? $tahun : NULL,
+            'jumlah_berkas'          => !empty($jumlah_berkas) ? $jumlah_berkas : 1,
+            'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
+            'box'                    => $box,
+            'klasifikasi_keamanan'   => $klasifikasi_keamanan,
+            'updateDate'             => $updateDate
         );
         
         // Jika ada file baru diupload
@@ -416,7 +438,7 @@ class Arsip extends CI_Controller {
         $whereRiwayat = array('arsip_id' => $id);
         $this->db->order_by('createDate', 'DESC');
         $data['riwayat'] = $this->m_model->get_where($whereRiwayat, 'tb_riwayat_arsip')->result();
-        $data['title'] = 'Riwayat Arsip : ' . $arsip->judul;
+        $data['title'] = 'Riwayat Arsip : ' . ($arsip->no_berkas ? $arsip->no_berkas : 'ID-' . $arsip->id);
         
         $this->load->view('admin/templates/header', $data);
         $this->load->view('admin/templates/sidebar');

@@ -17,7 +17,7 @@
       <div class="box box-danger">
         <div class="box-header with-border">
             <h3 class="box-title">
-                Judul Arsip : <?php echo $arsip->judul; ?>
+                NO BERKAS : <?php echo isset($arsip->no_berkas) ? $arsip->no_berkas : 'ID-' . $arsip->id; ?>
             </h3>
             <div class="pull-right btn-group">
                 <a href="<?php echo base_url('admin/arsip/kategori/').$arsip->kategori_id ?>" class="btn btn-success btn-sm">
@@ -30,12 +30,56 @@
                 <div class="col-md-6">
                     <table class="table table-bordered">
                         <tr>
-                            <th width="150">Nomor Arsip</th>
-                            <td><?php echo $arsip->nomor_arsip; ?></td>
+                            <th width="200">NO BERKAS</th>
+                            <td><?php echo isset($arsip->no_berkas) ? $arsip->no_berkas : '-'; ?></td>
                         </tr>
                         <tr>
-                            <th>Judul</th>
-                            <td><?php echo $arsip->judul; ?></td>
+                            <th>NO URUT</th>
+                            <td><?php echo isset($arsip->no_urut) ? $arsip->no_urut : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>KODE</th>
+                            <td><?php echo isset($arsip->kode) ? $arsip->kode : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>INDEKS/PEKERJAAN</th>
+                            <td><?php echo isset($arsip->indeks_pekerjaan) ? $arsip->indeks_pekerjaan : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>URAIAN MASALAH/KEGIATAN</th>
+                            <td><?php echo isset($arsip->uraian_masalah_kegiatan) ? $arsip->uraian_masalah_kegiatan : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>TAHUN</th>
+                            <td><?php echo isset($arsip->tahun) ? $arsip->tahun : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>JUMLAH BERKAS</th>
+                            <td><?php echo isset($arsip->jumlah_berkas) ? $arsip->jumlah_berkas : 1; ?></td>
+                        </tr>
+                        <tr>
+                            <th>ASLI/KOPI</th>
+                            <td>
+                                <?php if(isset($arsip->asli_kopi) && $arsip->asli_kopi): ?>
+                                    <span class="label label-info"><?php echo $arsip->asli_kopi; ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>BOX</th>
+                            <td>
+                                <?php if(isset($arsip->box) && $arsip->box): ?>
+                                    <span class="badge bg-green"><?php echo $arsip->box; ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>KLASIFIKASI KEAMANAN</th>
+                            <td><?php echo isset($arsip->klasifikasi_keamanan) ? $arsip->klasifikasi_keamanan : '-'; ?></td>
                         </tr>
                         <tr>
                             <th>Kategori</th>
@@ -109,5 +153,7 @@
     <!-- /.content -->
   </div>
   <!-- /.content-wrapper -->
+
+
 
 

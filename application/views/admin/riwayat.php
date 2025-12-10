@@ -49,7 +49,7 @@
                 ?>
                 <tr>
                   <td><?php echo $no++ ?></td>
-                  <td><?php echo isset($rwt->nomor_arsip) ? $rwt->nomor_arsip : '-'; ?></td>
+                  <td><?php echo isset($rwt->no_berkas) ? $rwt->no_berkas : '-'; ?></td>
                   <td><?php echo isset($rwt->arsip_judul) ? $rwt->arsip_judul : '-'; ?></td>
                   <td><?php echo isset($rwt->user_nama) ? $rwt->user_nama : '-'; ?></td>
                   <td>

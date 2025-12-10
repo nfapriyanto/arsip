@@ -50,16 +50,20 @@ INSERT INTO `tb_kategori_arsip` (`id`, `nama`, `deskripsi`, `createDate`) VALUES
 CREATE TABLE `tb_arsip` (
   `id` int(11) NOT NULL,
   `kategori_id` int(11) NOT NULL,
-  `nomor_arsip` varchar(100) NOT NULL,
-  `judul` varchar(500) NOT NULL,
-  `deskripsi` text DEFAULT NULL,
+  `no_berkas` varchar(100) DEFAULT NULL,
+  `no_urut` int(11) DEFAULT NULL,
+  `kode` varchar(100) DEFAULT NULL,
+  `indeks_pekerjaan` varchar(500) DEFAULT NULL,
+  `uraian_masalah_kegiatan` text DEFAULT NULL,
+  `tahun` YEAR DEFAULT NULL,
+  `jumlah_berkas` int(11) DEFAULT 1,
+  `asli_kopi` enum('Asli','Kopi') DEFAULT NULL COMMENT 'Asli atau Kopi',
+  `box` varchar(100) DEFAULT NULL COMMENT 'Nomor Box',
+  `klasifikasi_keamanan` varchar(100) DEFAULT NULL COMMENT 'Klasifikasi keamanan dan akses arsip dinamis',
   `nama_file` varchar(500) NOT NULL,
   `path_file` varchar(1000) NOT NULL,
   `ukuran_file` bigint(20) DEFAULT NULL COMMENT 'Ukuran file dalam bytes',
   `tipe_file` varchar(100) DEFAULT NULL COMMENT 'MIME type file',
-  `tahun_dokumen` YEAR DEFAULT NULL COMMENT 'Tahun dokumen',
-  `pembuat` varchar(256) DEFAULT NULL COMMENT 'Pembuat dokumen',
-  `status` enum('Aktif','Tidak Aktif','Arsip') DEFAULT 'Aktif',
   `createDate` datetime NOT NULL,
   `updateDate` datetime DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL COMMENT 'ID user yang membuat'
@@ -122,7 +126,8 @@ ALTER TABLE `tb_kategori_arsip`
 ALTER TABLE `tb_arsip`
   ADD PRIMARY KEY (`id`),
   ADD KEY `kategori_id` (`kategori_id`),
-  ADD KEY `nomor_arsip` (`nomor_arsip`),
+  ADD KEY `idx_no_berkas` (`no_berkas`),
+  ADD KEY `idx_kode` (`kode`),
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_judul` (`judul`(255));
 

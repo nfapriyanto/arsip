@@ -77,7 +77,7 @@
             <div class="form-group">
               <label>Cari Arsip (Nomor Arsip, Judul, atau Deskripsi)</label>
               <div class="input-group">
-                <input type="text" class="form-control" id="searchKeyword" placeholder="Masukkan nomor arsip, judul, atau kata kunci">
+                <input type="text" class="form-control" id="searchKeyword" placeholder="Masukkan NO BERKAS, KODE, INDEKS/PEKERJAAN, atau URAIAN MASALAH/KEGIATAN">
                 <span class="input-group-btn">
                   <button class="btn btn-primary" type="button" id="btnSearch">
                     <i class="fa fa-search"></i> Cari
@@ -182,11 +182,12 @@
           html += '<thead>';
           html += '<tr>';
           html += '<th width="5px">No</th>';
-          html += '<th>Nomor Arsip</th>';
-          html += '<th>Judul</th>';
+          html += '<th>NO BERKAS</th>';
+          html += '<th>KODE</th>';
+          html += '<th>INDEKS/PEKERJAAN</th>';
+          html += '<th>URAIAN MASALAH/KEGIATAN</th>';
           html += '<th>Kategori</th>';
-          html += '<th>Tahun Dokumen</th>';
-          html += '<th>Pembuat</th>';
+          html += '<th>TAHUN</th>';
           html += '<th>File</th>';
           html += '</tr>';
           html += '</thead>';
@@ -195,11 +196,12 @@
           data.arsip.forEach(function(arsip, index) {
             html += '<tr>';
             html += '<td>' + (index + 1) + '</td>';
-            html += '<td><strong>' + escapeHtml(arsip.nomor_arsip) + '</strong></td>';
-            html += '<td>' + escapeHtml(arsip.judul) + '</td>';
+            html += '<td><strong>' + escapeHtml(arsip.no_berkas || '-') + '</strong></td>';
+            html += '<td>' + escapeHtml(arsip.kode || '-') + '</td>';
+            html += '<td>' + escapeHtml(arsip.indeks_pekerjaan || '-') + '</td>';
+            html += '<td>' + escapeHtml(arsip.uraian_masalah_kegiatan || '-') + '</td>';
             html += '<td>' + escapeHtml(arsip.kategori_nama || '-') + '</td>';
-            html += '<td>' + (arsip.tahun_dokumen ? arsip.tahun_dokumen : '-') + '</td>';
-            html += '<td>' + escapeHtml(arsip.pembuat || '-') + '</td>';
+            html += '<td>' + (arsip.tahun ? arsip.tahun : '-') + '</td>';
             html += '<td><i class="fa fa-file"></i> ' + escapeHtml(arsip.nama_file) + '</td>';
             html += '</tr>';
           });
