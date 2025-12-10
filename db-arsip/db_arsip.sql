@@ -26,6 +26,7 @@ CREATE TABLE `tb_kategori_arsip` (
   `id` int(11) NOT NULL,
   `nama` varchar(256) NOT NULL,
   `deskripsi` text DEFAULT NULL,
+  `parent_id` int(11) NULL DEFAULT NULL COMMENT 'ID kategori parent untuk kategori bertingkat',
   `createDate` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -56,7 +57,7 @@ CREATE TABLE `tb_arsip` (
   `path_file` varchar(1000) NOT NULL,
   `ukuran_file` bigint(20) DEFAULT NULL COMMENT 'Ukuran file dalam bytes',
   `tipe_file` varchar(100) DEFAULT NULL COMMENT 'MIME type file',
-  `tanggal_dokumen` date DEFAULT NULL COMMENT 'Tanggal dokumen asli',
+  `tahun_dokumen` YEAR DEFAULT NULL COMMENT 'Tahun dokumen',
   `pembuat` varchar(256) DEFAULT NULL COMMENT 'Pembuat dokumen',
   `status` enum('Aktif','Tidak Aktif','Arsip') DEFAULT 'Aktif',
   `createDate` datetime NOT NULL,
@@ -112,7 +113,8 @@ INSERT INTO `tb_user` (`id`, `nama`, `username`, `password`, `level`, `createDat
 --
 ALTER TABLE `tb_kategori_arsip`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_nama` (`nama`);
+  ADD UNIQUE KEY `unique_nama` (`nama`),
+  ADD KEY `idx_parent_id` (`parent_id`);
 
 --
 -- Indexes for table `tb_arsip`

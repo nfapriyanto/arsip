@@ -185,7 +185,7 @@
           html += '<th>Nomor Arsip</th>';
           html += '<th>Judul</th>';
           html += '<th>Kategori</th>';
-          html += '<th>Tanggal Dokumen</th>';
+          html += '<th>Tahun Dokumen</th>';
           html += '<th>Pembuat</th>';
           html += '<th>File</th>';
           html += '</tr>';
@@ -198,7 +198,7 @@
             html += '<td><strong>' + escapeHtml(arsip.nomor_arsip) + '</strong></td>';
             html += '<td>' + escapeHtml(arsip.judul) + '</td>';
             html += '<td>' + escapeHtml(arsip.kategori_nama || '-') + '</td>';
-            html += '<td>' + (arsip.tanggal_dokumen ? formatDate(arsip.tanggal_dokumen) : '-') + '</td>';
+            html += '<td>' + (arsip.tahun_dokumen ? arsip.tahun_dokumen : '-') + '</td>';
             html += '<td>' + escapeHtml(arsip.pembuat || '-') + '</td>';
             html += '<td><i class="fa fa-file"></i> ' + escapeHtml(arsip.nama_file) + '</td>';
             html += '</tr>';

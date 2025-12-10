@@ -59,7 +59,7 @@ class CariArsip extends CI_Controller {
                     'judul' => $a->judul,
                     'deskripsi' => $a->deskripsi,
                     'kategori_nama' => $a->kategori_nama,
-                    'tanggal_dokumen' => $a->tanggal_dokumen,
+                    'tahun_dokumen' => $a->tahun_dokumen,
                     'pembuat' => $a->pembuat,
                     'nama_file' => $a->nama_file,
                     'ukuran_file' => $a->ukuran_file,

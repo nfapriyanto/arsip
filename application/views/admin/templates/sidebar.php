@@ -27,11 +27,11 @@
           </a>
         </li>
 
-        <li class="treeview">
+        <!-- <li class="treeview">
           <a href="<?php echo base_url('admin/cariArsip') ?>">
             <i class="fa fa-search"></i> <span>Cari Arsip</span>
           </a>
-        </li>
+        </li> -->
 
         <li class="treeview">
           <a href="<?php echo base_url('admin/riwayat') ?>">
@@ -39,11 +39,11 @@
           </a>
         </li>
 
-        <li class="treeview">
+        <!-- <li class="treeview">
           <a href="<?php echo base_url('admin/laporan') ?>">
             <i class="fa fa-table"></i> <span>Laporan</span>
           </a>
-        </li>
+        </li> -->
 
         <li class="treeview">
           <a href="<?php echo base_url('admin/manajemenUser') ?>">

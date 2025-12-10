@@ -20,18 +20,22 @@ class Arsip extends CI_Controller {
     {
         $data['title'] = 'Data Kategori Arsip';
         
-        // Ambil semua kategori dengan total arsip
-        $this->db->select('k.id, k.nama, k.deskripsi, COUNT(a.id) as total_arsip');
+        // Ambil hanya kategori parent (parent_id IS NULL) dengan total arsip
+        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as total_arsip, COUNT(DISTINCT sub.id) as total_sub');
         $this->db->from('tb_kategori_arsip k');
         $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
-        $this->db->group_by('k.id, k.nama, k.deskripsi');
+        $this->db->join('tb_kategori_arsip sub', 'sub.parent_id = k.id', 'left');
+        $this->db->where('k.parent_id IS NULL');
+        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
         $this->db->order_by('k.nama', 'ASC');
         $kategori = $this->db->get()->result();
         
         $data['kategori'] = $kategori;
         
-        // Ambil semua kategori untuk dropdown form
-        $data['list_kategori'] = $this->m_model->get('tb_kategori_arsip')->result();
+        // Ambil semua kategori untuk dropdown form (hanya parent)
+        $this->db->where('parent_id IS NULL');
+        $this->db->order_by('nama', 'ASC');
+        $data['list_kategori'] = $this->db->get('tb_kategori_arsip')->result();
         
         $this->load->view('admin/templates/header', $data);
         $this->load->view('admin/templates/sidebar');
@@ -57,17 +61,36 @@ class Arsip extends CI_Controller {
         
         $data['title'] = 'Daftar Arsip: ' . $kategori->nama;
         
-        // Ambil semua arsip dengan kategori_id yang sama
-        $where = array('kategori_id' => $id);
-        $this->db->order_by('createDate', 'DESC');
-        $arsip = $this->m_model->get_where($where, 'tb_arsip')->result();
+        // Ambil semua arsip dengan kategori_id yang sama (termasuk sub-kategori)
+        $this->db->select('a.*');
+        $this->db->from('tb_arsip a');
+        $this->db->where('a.kategori_id', $id);
+        $this->db->order_by('a.createDate', 'DESC');
+        $arsip = $this->db->get()->result();
+        
+        // Ambil sub-kategori jika ada dengan total arsip
+        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as total_arsip');
+        $this->db->from('tb_kategori_arsip k');
+        $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
+        $this->db->where('k.parent_id', $id);
+        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
+        $this->db->order_by('k.nama', 'ASC');
+        $sub_kategori = $this->db->get()->result();
         
         $data['arsip'] = $arsip;
+        $data['sub_kategori'] = $sub_kategori;
         $data['kategori_id'] = $id;
         $data['kategori_nama'] = $kategori->nama;
+        $data['kategori_parent_id'] = $kategori->parent_id;
         
-        // Ambil semua kategori untuk dropdown form
-        $data['list_kategori'] = $this->m_model->get('tb_kategori_arsip')->result();
+        // Ambil semua kategori untuk dropdown form (termasuk sub-kategori untuk form arsip)
+        $this->db->order_by('nama', 'ASC');
+        $data['list_kategori'] = $this->db->get('tb_kategori_arsip')->result();
+        
+        // Ambil hanya kategori parent untuk dropdown form sub-kategori baru
+        $this->db->where('parent_id IS NULL');
+        $this->db->order_by('nama', 'ASC');
+        $data['list_kategori_parent'] = $this->db->get('tb_kategori_arsip')->result();
         
         $this->load->view('admin/templates/header', $data);
         $this->load->view('admin/templates/sidebar');
@@ -106,22 +129,53 @@ class Arsip extends CI_Controller {
         }
     }
 
+    public function delete_kategori($id)
+    {
+        // Cek apakah kategori memiliki arsip
+        $where_arsip = array('kategori_id' => $id);
+        $jumlah_arsip = $this->m_model->get_where($where_arsip, 'tb_arsip')->num_rows();
+        
+        // Cek apakah kategori memiliki sub-kategori
+        $where_sub = array('parent_id' => $id);
+        $jumlah_sub = $this->m_model->get_where($where_sub, 'tb_kategori_arsip')->num_rows();
+        
+        if($jumlah_arsip > 0 || $jumlah_sub > 0) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak dapat dihapus karena masih memiliki arsip atau sub-kategori!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        // Hapus kategori
+        $where = array('id' => $id);
+        $this->m_model->delete($where, 'tb_kategori_arsip');
+        $this->session->set_flashdata('pesan', 'Kategori berhasil dihapus!');
+        redirect('admin/arsip');
+    }
+
     public function insert_kategori()
     {
         date_default_timezone_set('Asia/Jakarta');
         $nama       = $this->input->post('nama');
         $deskripsi  = $this->input->post('deskripsi');
+        $parent_id  = $this->input->post('parent_id'); // Untuk kategori bertingkat
         $createDate = date('Y-m-d H:i:s');
 
         $data = array(
             'nama'          => $nama,
             'deskripsi'     => $deskripsi,
+            'parent_id'     => !empty($parent_id) ? $parent_id : NULL,
             'createDate'    => $createDate,
         );
 
         $this->m_model->insert($data, 'tb_kategori_arsip');
         $this->session->set_flashdata('pesan', 'Kategori berhasil ditambahkan!');
-        redirect('admin/arsip');
+        
+        // Redirect ke halaman yang sesuai
+        if(!empty($parent_id)) {
+            redirect('admin/arsip/kategori/' . $parent_id);
+        } else {
+            redirect('admin/arsip');
+        }
     }
 
     public function insert()
@@ -132,7 +186,7 @@ class Arsip extends CI_Controller {
         $nomor_arsip    = $this->input->post('nomor_arsip');
         $judul          = $this->input->post('judul');
         $deskripsi      = $this->input->post('deskripsi');
-        $tanggal_dokumen = $this->input->post('tanggal_dokumen');
+        $tahun_dokumen = $this->input->post('tahun_dokumen');
         $pembuat        = $this->input->post('pembuat');
         $createDate     = date('Y-m-d H:i:s');
         
@@ -183,7 +237,7 @@ class Arsip extends CI_Controller {
             'path_file'      => $path_file,
             'ukuran_file'    => $ukuran_file,
             'tipe_file'      => $tipe_file,
-            'tanggal_dokumen' => !empty($tanggal_dokumen) ? $tanggal_dokumen : NULL,
+            'tahun_dokumen' => !empty($tahun_dokumen) ? $tahun_dokumen : NULL,
             'pembuat'        => $pembuat,
             'status'         => 'Aktif',
             'createDate'     => $createDate,
@@ -295,7 +349,7 @@ class Arsip extends CI_Controller {
         $nomor_arsip     = $this->input->post('nomor_arsip');
         $judul           = $this->input->post('judul');
         $deskripsi       = $this->input->post('deskripsi');
-        $tanggal_dokumen = $this->input->post('tanggal_dokumen');
+        $tahun_dokumen = $this->input->post('tahun_dokumen');
         $pembuat         = $this->input->post('pembuat');
         $status          = $this->input->post('status');
         $updateDate      = date('Y-m-d H:i:s');
@@ -307,7 +361,7 @@ class Arsip extends CI_Controller {
             'nomor_arsip'   => $nomor_arsip,
             'judul'         => $judul,
             'deskripsi'      => $deskripsi,
-            'tanggal_dokumen' => !empty($tanggal_dokumen) ? $tanggal_dokumen : NULL,
+            'tahun_dokumen' => !empty($tahun_dokumen) ? $tahun_dokumen : NULL,
             'pembuat'        => $pembuat,
             'status'         => $status,
             'updateDate'     => $updateDate
@@ -384,4 +438,5 @@ class Arsip extends CI_Controller {
         $this->m_model->insert($data, 'tb_riwayat_arsip');
     }
 }
+
 

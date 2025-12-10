@@ -6,7 +6,9 @@
         Dashboard
         <small>Dashboard</small>
       </h1>
-      <b><marquee style="font-size:25px;color:green;font-family:Arial;padding-top:5px;"scrollamount="11">.: Selamat Datang di Halaman Sistem Penyimpanan Arsip Digital :.</marquee></b>
+      <div style="text-align:center;font-size:25px;color:green;font-family:Arial;padding-top:5px;font-weight:bold;">
+        .: Selamat Datang di Halaman Sistem Penyimpanan Arsip Digital :.
+      </div>
       <h4><p>Halo...<b><?php echo $_SESSION['nama']; ?></b> !!! Anda telah login sebagai <b><?php echo $_SESSION['level']; ?></b>.</p></h4>
       <b><div class="icon">
         <i class="fa fa-clock-o"></i>  
