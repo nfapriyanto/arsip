@@ -1,0 +1,93 @@
+================================================================================
+SOLUSI MASALAH PHP VERSION - PHPSPREADSHEET
+================================================================================
+
+MASALAH:
+--------
+PhpSpreadsheet versi 5.3.0 memerlukan PHP >= 8.3.0
+Anda menggunakan PHP 8.0.28
+
+ERROR:
+------
+"Your Composer dependencies require a PHP version ">= 8.3.0". 
+You are running 8.0.28."
+
+
+SOLUSI 1: DOWNGRADE PHPSPREADSHEET (DIREKOMENDASIKAN)
+-----------------------------------------------------
+
+1. Buka Command Prompt
+2. Masuk ke folder:
+   cd C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet
+
+3. Hapus vendor dan composer.lock (jika ada):
+   rmdir /s /q vendor
+   del composer.lock
+
+4. Edit file composer.json, ubah menjadi:
+   {
+       "require": {
+           "phpoffice/phpspreadsheet": "^1.29"
+       }
+   }
+
+5. Install ulang:
+   composer install --prefer-dist --no-interaction
+
+6. Atau langsung:
+   composer require phpoffice/phpspreadsheet:^1.29 --prefer-dist --no-interaction
+
+
+SOLUSI 2: BYPASS PLATFORM CHECK (SEMENTARA)
+---------------------------------------------
+
+Saya sudah update controller untuk bypass platform check.
+Tapi lebih baik downgrade ke versi yang kompatibel (Solusi 1).
+
+
+SOLUSI 3: UPGRADE PHP (JIKA MEMUNGKINKAN)
+------------------------------------------
+
+1. Download PHP 8.3+ dari: https://windows.php.net/download/
+2. Extract ke folder baru (misalnya: C:\php83)
+3. Update XAMPP untuk menggunakan PHP 8.3
+4. Atau install XAMPP versi terbaru yang sudah include PHP 8.3+
+
+
+CATATAN VERSI PHPSPREADSHEET
+-----------------------------
+
+- PhpSpreadsheet 1.x: Support PHP 7.4 - 8.2
+- PhpSpreadsheet 2.x: Support PHP 8.0 - 8.2  
+- PhpSpreadsheet 3.x: Support PHP 8.1+
+- PhpSpreadsheet 4.x: Support PHP 8.1+
+- PhpSpreadsheet 5.x: Support PHP 8.3+
+
+Untuk PHP 8.0.28, gunakan versi 1.29 atau 1.30.x
+
+
+VERIFIKASI SETELAH DOWNGRADE
+-----------------------------
+
+1. Pastikan file ada:
+   ✓ application/third_party/PhpSpreadsheet/vendor/autoload.php
+   ✓ application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet/src/Spreadsheet.php
+
+2. Cek versi yang terinstall:
+   Buka: application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet/composer.json
+   Cari: "version" - harusnya 1.29.x atau 1.30.x
+
+3. Coba download template Excel lagi
+
+
+LANGKAH CEPAT (COPY-PASTE DI CMD)
+----------------------------------
+
+cd C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet
+del composer.lock
+composer require phpoffice/phpspreadsheet:^1.29 --prefer-dist --no-interaction
+
+
+================================================================================
+
+

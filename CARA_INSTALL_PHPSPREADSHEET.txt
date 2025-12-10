@@ -1,0 +1,147 @@
+================================================================================
+CARA INSTALL PHPSPREADSHEET YANG BENAR
+================================================================================
+
+Masalah: File autoload.php tidak ditemukan meskipun folder vendor sudah ada.
+
+Solusi: Install PhpSpreadsheet menggunakan Composer dengan benar.
+
+================================================================================
+LANGKAH-LANGKAH INSTALASI
+================================================================================
+
+CARA 1: MENGGUNAKAN COMPOSER (DIREKOMENDASIKAN)
+------------------------------------------------
+
+1. Pastikan Composer sudah terinstall
+   - Download dari: https://getcomposer.org/download/
+   - Atau cek dengan menjalankan: composer --version
+
+2. Buka Command Prompt atau Terminal
+
+3. Masuk ke folder project:
+   cd C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet
+
+4. Install PhpSpreadsheet:
+   composer require phpoffice/phpspreadsheet
+
+5. Tunggu sampai proses instalasi selesai
+
+6. Verifikasi instalasi:
+   - Pastikan file ada di: application/third_party/PhpSpreadsheet/vendor/autoload.php
+   - Pastikan folder ada di: application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet
+
+7. Coba akses fitur download template lagi
+
+
+CARA 2: JIKA COMPOSER TIDAK TERSEDIA
+--------------------------------------
+
+1. Download Composer untuk Windows:
+   - Kunjungi: https://getcomposer.org/download/
+   - Download file: Composer-Setup.exe
+   - Install Composer
+
+2. Setelah Composer terinstall, ikuti CARA 1 di atas
+
+
+CARA 3: DOWNLOAD MANUAL (TIDAK DIREKOMENDASIKAN)
+-------------------------------------------------
+
+1. Download PhpSpreadsheet dari GitHub:
+   https://github.com/PHPOffice/PhpSpreadsheet/archive/refs/heads/master.zip
+
+2. Extract file zip
+
+3. Masuk ke folder hasil extract
+
+4. Buka folder "vendor" di dalam hasil extract
+
+5. Salin SEMUA isi folder vendor ke:
+   C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet\vendor\
+
+6. Pastikan file autoload.php ada di:
+   C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet\vendor\autoload.php
+
+7. Pastikan folder phpoffice ada di:
+   C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet\vendor\phpoffice\phpspreadsheet\
+
+
+================================================================================
+VERIFIKASI INSTALASI
+================================================================================
+
+Setelah instalasi, jalankan script pengecekan:
+- Buka browser
+- Akses: http://localhost/arsip/check_phpspreadsheet.php
+- Atau jalankan via command line: php check_phpspreadsheet.php
+
+Script akan menampilkan status instalasi dan masalah yang ditemukan.
+
+
+ATAU cek manual dengan memastikan file berikut ada:
+✓ application/third_party/PhpSpreadsheet/vendor/autoload.php
+✓ application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet/
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Masalah: "composer: command not found"
+Solusi: 
+- Pastikan Composer sudah terinstall
+- Atau gunakan: php composer.phar (jika ada file composer.phar)
+
+Masalah: "Could not find package phpoffice/phpspreadsheet"
+Solusi:
+- Pastikan koneksi internet aktif
+- Cek firewall tidak memblokir Composer
+
+Masalah: "Permission denied"
+Solusi:
+- Pastikan folder application/third_party/PhpSpreadsheet memiliki permission write
+- Di Windows, biasanya tidak ada masalah permission
+
+Masalah: "File autoload.php tidak ditemukan setelah install"
+Solusi:
+- Pastikan install di folder yang benar: application/third_party/PhpSpreadsheet
+- Cek apakah ada error saat instalasi
+- Coba jalankan: composer install (jika sudah ada composer.json)
+
+
+================================================================================
+CATATAN PENTING
+================================================================================
+
+- JANGAN hanya memindahkan folder vendor dari tempat lain
+- HARUS install PhpSpreadsheet di folder: application/third_party/PhpSpreadsheet
+- File autoload.php HARUS ada di: vendor/autoload.php
+- Folder phpoffice/phpspreadsheet HARUS ada di: vendor/phpoffice/phpspreadsheet
+
+Struktur folder yang benar:
+application/
+  third_party/
+    PhpSpreadsheet/
+      vendor/
+        autoload.php          ← HARUS ADA
+        phpoffice/
+          phpspreadsheet/     ← HARUS ADA
+            src/
+            ...
+        composer/
+        ...
+
+
+================================================================================
+BANTUAN
+================================================================================
+
+Jika masih mengalami masalah:
+1. Jalankan script: check_phpspreadsheet.php
+2. Lihat output untuk mengetahui masalah spesifik
+3. Ikuti solusi yang ditampilkan oleh script
+
+================================================================================
+
+

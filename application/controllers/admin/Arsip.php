@@ -103,21 +103,30 @@ class Arsip extends CI_Controller {
         // Ambil data arsip untuk mendapatkan kategori_id dan path_file sebelum dihapus
         $where = array('id' => $id);
         $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
-        $kategori_id = $arsip ? $arsip->kategori_id : null;
-        $path_file = $arsip ? $arsip->path_file : null;
-
+        
+        // Cek apakah arsip ada
+        if(!$arsip) {
+            $this->session->set_flashdata('pesan', 'Data arsip tidak ditemukan!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        $kategori_id = $arsip->kategori_id;
+        $path_file = $arsip->path_file;
+        
+        // Log aksi delete SEBELUM menghapus (untuk menghindari foreign key constraint error)
+        // Karena foreign key constraint memerlukan arsip masih ada saat log dibuat
+        $this->logAksi($id, 'Delete', 'Arsip dihapus');
+        
         // Hapus file fisik jika ada
         if($path_file && file_exists($path_file)) {
             @unlink($path_file);
         }
 
         // Hapus data dari database
+        // Catatan: Jika foreign key menggunakan ON DELETE CASCADE, riwayat akan otomatis terhapus
+        // Tapi kita sudah membuat log sebelum delete, jadi tidak masalah
         $this->m_model->delete($where, 'tb_arsip');
-        
-        // Log aksi delete
-        if($arsip) {
-            $this->logAksi($id, 'Delete', 'Arsip dihapus');
-        }
         
         $this->session->set_flashdata('pesan', 'Data arsip berhasil dihapus!');
         
@@ -488,16 +497,453 @@ class Arsip extends CI_Controller {
     
     private function logAksi($arsip_id, $aksi, $keterangan = '')
     {
-        date_default_timezone_set('Asia/Jakarta');
-        $data = array(
-            'arsip_id'  => $arsip_id,
-            'user_id'   => $this->session->userdata('id'),
-            'aksi'      => $aksi,
-            'keterangan' => $keterangan,
-            'ip_address' => $this->input->ip_address(),
-            'createDate' => date('Y-m-d H:i:s')
+        try {
+            date_default_timezone_set('Asia/Jakarta');
+            $data = array(
+                'arsip_id'  => $arsip_id,
+                'user_id'   => $this->session->userdata('id'),
+                'aksi'      => $aksi,
+                'keterangan' => $keterangan,
+                'ip_address' => $this->input->ip_address(),
+                'createDate' => date('Y-m-d H:i:s')
+            );
+            $this->m_model->insert($data, 'tb_riwayat_arsip');
+        } catch(Exception $e) {
+            // Log error tapi jangan hentikan proses utama
+            // Error akan dicatat di log sistem CodeIgniter
+            log_message('error', 'Gagal menambahkan log aksi: ' . $e->getMessage());
+        }
+    }
+
+    public function import()
+    {
+        // Hanya bisa import jika ada kategori_id
+        $kategori_id = $this->input->post('kategori_id');
+        
+        if(empty($kategori_id)) {
+            $this->session->set_flashdata('pesan', 'Kategori harus dipilih!');
+            redirect('admin/arsip');
+            return;
+        }
+
+        // Validasi file
+        if(empty($_FILES['file_excel']['name'])) {
+            $this->session->set_flashdata('pesan', 'File Excel harus diupload!');
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+
+        // Konfigurasi upload
+        $config['upload_path'] = './uploads/temp/';
+        $config['allowed_types'] = 'xls|xlsx';
+        $config['max_size'] = 5120; // 5MB
+        $config['encrypt_name'] = TRUE;
+        
+        // Buat folder jika belum ada
+        if(!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, TRUE);
+        }
+        
+        $this->upload->initialize($config);
+        
+        if (!$this->upload->do_upload('file_excel')) {
+            $error = $this->upload->display_errors();
+            $this->session->set_flashdata('pesan', 'Upload gagal: ' . $error);
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+        
+        $upload_data = $this->upload->data();
+        $file_path = $config['upload_path'] . $upload_data['file_name'];
+        
+        // Load PhpSpreadsheet
+        $load_result = $this->loadPhpSpreadsheet();
+        if(!$load_result['success']) {
+            @unlink($file_path);
+            $this->session->set_flashdata('pesan', $load_result['message']);
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+        
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file_path);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray();
+            
+            // Skip header row (row 1)
+            array_shift($rows);
+            
+            $success_count = 0;
+            $error_count = 0;
+            $errors = array();
+            
+            // Ambil nama user dari session
+            $user_id = $this->session->userdata('id');
+            $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
+            $nama_pengisi = $user ? $user->nama : NULL;
+            
+            date_default_timezone_set('Asia/Jakarta');
+            $createDate = date('Y-m-d H:i:s');
+            
+            foreach($rows as $index => $row) {
+                $row_num = $index + 2; // +2 karena skip header dan index mulai dari 0
+                
+                // Skip baris kosong
+                if(empty(array_filter($row))) {
+                    continue;
+                }
+                
+                // Mapping kolom Excel ke field database
+                // Kolom: A=Kategori, B=No Berkas, C=No Urut, D=Kode, E=Indeks/Pekerjaan, 
+                //        F=Uraian Masalah/Kegiatan, G=Tahun, H=Jumlah Berkas, I=Asli/Kopi, 
+                //        J=Box, K=Klasifikasi Keamanan, L=Link Drive
+                
+                $kategori_nama = isset($row[0]) ? trim($row[0]) : '';
+                $no_berkas = isset($row[1]) ? trim($row[1]) : '';
+                $no_urut = isset($row[2]) ? trim($row[2]) : '';
+                $kode = isset($row[3]) ? trim($row[3]) : '';
+                $indeks_pekerjaan = isset($row[4]) ? trim($row[4]) : '';
+                $uraian_masalah_kegiatan = isset($row[5]) ? trim($row[5]) : '';
+                $tahun = isset($row[6]) ? trim($row[6]) : '';
+                $jumlah_berkas = isset($row[7]) ? trim($row[7]) : '';
+                $asli_kopi = isset($row[8]) ? trim($row[8]) : '';
+                $box = isset($row[9]) ? trim($row[9]) : '';
+                $klasifikasi_keamanan = isset($row[10]) ? trim($row[10]) : '';
+                $link_drive = isset($row[11]) ? trim($row[11]) : '';
+                
+                // Validasi kategori (jika kategori_nama diisi, cari ID-nya)
+                $import_kategori_id = $kategori_id; // Default ke kategori yang dipilih
+                if(!empty($kategori_nama)) {
+                    $kategori_check = $this->m_model->get_where(array('nama' => $kategori_nama), 'tb_kategori_arsip')->row();
+                    if($kategori_check) {
+                        $import_kategori_id = $kategori_check->id;
+                    }
+                }
+                
+                // Validasi kategori_id harus valid
+                $kategori_valid = $this->m_model->get_where(array('id' => $import_kategori_id), 'tb_kategori_arsip')->row();
+                if(!$kategori_valid) {
+                    $errors[] = "Baris $row_num: Kategori tidak valid";
+                    $error_count++;
+                    continue;
+                }
+                
+                // Jika no_berkas kosong, generate otomatis
+                if(empty($no_berkas)) {
+                    $no_berkas = $this->generateNoBerkas($import_kategori_id);
+                }
+                
+                // Validasi asli_kopi
+                if(!empty($asli_kopi) && !in_array($asli_kopi, array('Asli', 'Kopi'))) {
+                    $errors[] = "Baris $row_num: Asli/Kopi harus 'Asli' atau 'Kopi'";
+                    $error_count++;
+                    continue;
+                }
+                
+                // Default jumlah_berkas
+                if(empty($jumlah_berkas) || !is_numeric($jumlah_berkas)) {
+                    $jumlah_berkas = 1;
+                }
+                
+                // Validasi tahun
+                if(!empty($tahun) && (!is_numeric($tahun) || $tahun < 1900 || $tahun > date('Y') + 1)) {
+                    $errors[] = "Baris $row_num: Tahun tidak valid";
+                    $error_count++;
+                    continue;
+                }
+                
+                // Validasi no_urut
+                if(!empty($no_urut) && !is_numeric($no_urut)) {
+                    $errors[] = "Baris $row_num: No Urut harus angka";
+                    $error_count++;
+                    continue;
+                }
+                
+                // Validasi link_drive (harus URL jika diisi)
+                if(!empty($link_drive) && !filter_var($link_drive, FILTER_VALIDATE_URL)) {
+                    $errors[] = "Baris $row_num: Link Drive harus berupa URL yang valid";
+                    $error_count++;
+                    continue;
+                }
+                
+                // Siapkan data untuk insert
+                $data = array(
+                    'kategori_id'            => $import_kategori_id,
+                    'no_berkas'              => $no_berkas,
+                    'no_urut'                => !empty($no_urut) ? intval($no_urut) : NULL,
+                    'kode'                   => $kode ?: NULL,
+                    'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
+                    'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
+                    'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,
+                    'jumlah_berkas'          => intval($jumlah_berkas),
+                    'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
+                    'box'                    => $box ?: NULL,
+                    'klasifikasi_keamanan'   => $klasifikasi_keamanan ?: NULL,
+                    'nama_pengisi'           => $nama_pengisi,
+                    'link_drive'             => $link_drive ?: NULL,
+                    'createDate'             => $createDate,
+                    'created_by'             => $user_id
+                );
+                
+                // Insert data
+                try {
+                    $this->m_model->insert($data, 'tb_arsip');
+                    $arsip_id = $this->db->insert_id();
+                    
+                    // Log aksi import
+                    $this->logAksi($arsip_id, 'Upload', 'Arsip diimport dari Excel');
+                    
+                    $success_count++;
+                } catch(Exception $e) {
+                    $errors[] = "Baris $row_num: " . $e->getMessage();
+                    $error_count++;
+                }
+            }
+            
+            // Hapus file temporary
+            @unlink($file_path);
+            
+            // Set pesan hasil
+            $pesan = "Import selesai! Berhasil: $success_count, Gagal: $error_count";
+            if(!empty($errors) && count($errors) <= 10) {
+                $pesan .= "<br>Error detail:<br>" . implode("<br>", $errors);
+            } elseif(!empty($errors)) {
+                $pesan .= "<br>Ada " . count($errors) . " error. Silakan cek log untuk detail.";
+            }
+            
+            $this->session->set_flashdata('pesan', $pesan);
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            
+        } catch(Exception $e) {
+            // Hapus file temporary
+            @unlink($file_path);
+            
+            $this->session->set_flashdata('pesan', 'Error membaca file Excel: ' . $e->getMessage());
+            redirect('admin/arsip/kategori/' . $kategori_id);
+        }
+    }
+
+    private function loadPhpSpreadsheet()
+    {
+        // Cek ekstensi PHP yang diperlukan untuk PhpSpreadsheet
+        $required_extensions = array(
+            'zip' => 'ZipArchive (untuk membaca file .xlsx)',
+            'xml' => 'XML (untuk membaca file Excel)',
+            'xmlwriter' => 'XMLWriter (untuk membaca file Excel)',
+            'mbstring' => 'mbstring (untuk encoding)'
         );
-        $this->m_model->insert($data, 'tb_riwayat_arsip');
+        
+        $missing_extensions = array();
+        foreach($required_extensions as $ext => $desc) {
+            if(!extension_loaded($ext)) {
+                $missing_extensions[] = $desc . ' (ekstensi: ' . $ext . ')';
+            }
+        }
+        
+        if(!empty($missing_extensions)) {
+            $error_msg = '<div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; margin: 20px 0;">';
+            $error_msg .= '<h3 style="color: #856404; margin-top: 0;">⚠️ Ekstensi PHP Belum Diaktifkan</h3>';
+            $error_msg .= '<p><strong>Ekstensi yang belum aktif:</strong></p>';
+            $error_msg .= '<ul>';
+            foreach($missing_extensions as $ext) {
+                $error_msg .= '<li>' . $ext . '</li>';
+            }
+            $error_msg .= '</ul>';
+            $error_msg .= '<hr style="border: 1px solid #ffc107; margin: 20px 0;">';
+            $error_msg .= '<p><strong>📋 Solusi Cepat untuk XAMPP:</strong></p>';
+            $error_msg .= '<ol style="line-height: 2;">';
+            $error_msg .= '<li>Buka <strong>XAMPP Control Panel</strong></li>';
+            $error_msg .= '<li>Klik tombol <strong>"Config"</strong> di sebelah Apache</li>';
+            $error_msg .= '<li>Pilih <strong>"PHP (php.ini)"</strong> - file akan terbuka di text editor</li>';
+            $error_msg .= '<li>Gunakan <strong>Ctrl+F</strong> untuk mencari: <code>;extension=zip</code></li>';
+            $error_msg .= '<li><strong>Hapus tanda <code>;</code></strong> di depan baris tersebut</li>';
+            $error_msg .= '<li>Pastikan ekstensi berikut juga aktif (hapus <code>;</code> jika ada):<br>';
+            $error_msg .= '   - <code>extension=zip</code><br>';
+            $error_msg .= '   - <code>extension=xml</code><br>';
+            $error_msg .= '   - <code>extension=xmlwriter</code><br>';
+            $error_msg .= '   - <code>extension=mbstring</code></li>';
+            $error_msg .= '<li><strong>Simpan file</strong> (Ctrl+S)</li>';
+            $error_msg .= '<li><strong>Restart Apache</strong> di XAMPP Control Panel (Stop → Start)</li>';
+            $error_msg .= '</ol>';
+            $error_msg .= '<hr style="border: 1px solid #ffc107; margin: 20px 0;">';
+            $error_msg .= '<p><strong>💡 Bantuan Lebih Lanjut:</strong></p>';
+            $error_msg .= '<p style="margin-bottom: 10px;">📖 <strong>Panduan Lengkap:</strong> <a href="' . base_url('fix_zip_extension.php') . '" target="_blank" style="color: #2196F3; font-weight: bold; text-decoration: underline;">fix_zip_extension.php</a> (Panduan langkah demi langkah)</p>';
+            $error_msg .= '<p style="margin-bottom: 10px;">🔍 <strong>Cek Status:</strong> <a href="' . base_url('check_php_extensions.php') . '" target="_blank" style="color: #2196F3; font-weight: bold; text-decoration: underline;">check_php_extensions.php</a> (Verifikasi ekstensi)</p>';
+            $error_msg .= '<p style="margin-top: 15px; padding: 10px; background: #e7f3ff; border-radius: 5px;"><strong>⚠️ Catatan Penting:</strong> Ekstensi zip sangat penting untuk membaca file Excel (.xlsx) karena format XLSX adalah file ZIP yang berisi XML. <strong>Setelah mengaktifkan ekstensi, WAJIB restart Apache!</strong></p>';
+            $error_msg .= '</div>';
+            
+            return array('success' => false, 'message' => $error_msg);
+        }
+        
+        // Cek beberapa kemungkinan lokasi autoload.php
+        $possible_paths = array(
+            APPPATH . 'third_party/PhpSpreadsheet/vendor/autoload.php',
+            FCPATH . 'vendor/autoload.php',
+            APPPATH . '../vendor/autoload.php',
+            APPPATH . 'third_party/vendor/autoload.php'
+        );
+        
+        $phpspreadsheet_path = null;
+        foreach($possible_paths as $path) {
+            if(file_exists($path)) {
+                $phpspreadsheet_path = $path;
+                break;
+            }
+        }
+        
+        if(!$phpspreadsheet_path) {
+            // Cek apakah folder vendor ada tapi autoload.php tidak ada
+            $vendor_dir = APPPATH . 'third_party/PhpSpreadsheet/vendor/';
+            $phpoffice_dir = $vendor_dir . 'phpoffice/phpspreadsheet/';
+            
+            $error_msg = 'Library PhpSpreadsheet belum terinstall dengan benar!<br><br>';
+            $error_msg .= '<strong>Masalah yang ditemukan:</strong><br>';
+            
+            if(!is_dir($vendor_dir)) {
+                $error_msg .= '- Folder vendor tidak ditemukan di: ' . $vendor_dir . '<br>';
+            } elseif(!file_exists($vendor_dir . 'autoload.php')) {
+                $error_msg .= '- File autoload.php tidak ditemukan di: ' . $vendor_dir . '<br>';
+            }
+            
+            if(!is_dir($phpoffice_dir)) {
+                $error_msg .= '- Folder phpoffice/phpspreadsheet tidak ditemukan<br>';
+            }
+            
+            $error_msg .= '<br><strong>Solusi:</strong><br>';
+            $error_msg .= '1. Buka terminal/command prompt di folder: <code>application/third_party/PhpSpreadsheet</code><br>';
+            $error_msg .= '2. Jalankan: <code>composer require phpoffice/phpspreadsheet</code><br>';
+            $error_msg .= '3. Atau lihat panduan lengkap di file README_INSTALL_PHPSPREADSHEET.txt<br>';
+            
+            return array('success' => false, 'message' => $error_msg);
+        }
+        
+        // Bypass platform check untuk PHP 8.0 (sementara)
+        // PhpSpreadsheet 5.x memerlukan PHP 8.3+, tapi kita gunakan versi 1.29+ yang support PHP 8.0
+        $platform_check_file = dirname($phpspreadsheet_path) . '/composer/platform_check.php';
+        if(file_exists($platform_check_file)) {
+            // Backup original platform check
+            $platform_check_backup = $platform_check_file . '.backup';
+            if(!file_exists($platform_check_backup)) {
+                copy($platform_check_file, $platform_check_backup);
+            }
+            
+            // Bypass platform check untuk PHP 8.0
+            $platform_check_content = file_get_contents($platform_check_file);
+            if(strpos($platform_check_content, '>= 8.3.0') !== false) {
+                // Replace dengan check yang lebih fleksibel
+                $platform_check_content = str_replace(
+                    '>= 8.3.0',
+                    '>= 8.0.0',
+                    $platform_check_content
+                );
+                file_put_contents($platform_check_file, $platform_check_content);
+            }
+        }
+        
+        // Load library PhpSpreadsheet
+        require_once $phpspreadsheet_path;
+        
+        // Verifikasi class tersedia
+        if(!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+            return array(
+                'success' => false, 
+                'message' => 'PhpSpreadsheet terdeteksi tapi class tidak tersedia. Pastikan instalasi lengkap dengan menjalankan: composer install di folder vendor'
+            );
+        }
+        
+        return array('success' => true, 'path' => $phpspreadsheet_path);
+    }
+
+    public function download_template()
+    {
+        // Load PhpSpreadsheet
+        $load_result = $this->loadPhpSpreadsheet();
+        if(!$load_result['success']) {
+            $this->session->set_flashdata('pesan', $load_result['message']);
+            redirect('admin/arsip');
+            return;
+        }
+        
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Set header
+        $headers = array(
+            'A1' => 'Kategori (Opsional)',
+            'B1' => 'No Berkas',
+            'C1' => 'No Urut',
+            'D1' => 'Kode',
+            'E1' => 'Indeks/Pekerjaan',
+            'F1' => 'Uraian Masalah/Kegiatan',
+            'G1' => 'Tahun',
+            'H1' => 'Jumlah Berkas',
+            'I1' => 'Asli/Kopi',
+            'J1' => 'Box',
+            'K1' => 'Klasifikasi Keamanan',
+            'L1' => 'Link Drive'
+        );
+        
+        foreach($headers as $cell => $value) {
+            $sheet->setCellValue($cell, $value);
+        }
+        
+        // Set style untuk header
+        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:L1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF4472C4');
+        $sheet->getStyle('A1:L1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        
+        // Set width kolom
+        $sheet->getColumnDimension('A')->setWidth(20);
+        $sheet->getColumnDimension('B')->setWidth(20);
+        $sheet->getColumnDimension('C')->setWidth(12);
+        $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('E')->setWidth(25);
+        $sheet->getColumnDimension('F')->setWidth(40);
+        $sheet->getColumnDimension('G')->setWidth(10);
+        $sheet->getColumnDimension('H')->setWidth(15);
+        $sheet->getColumnDimension('I')->setWidth(12);
+        $sheet->getColumnDimension('J')->setWidth(12);
+        $sheet->getColumnDimension('K')->setWidth(25);
+        $sheet->getColumnDimension('L')->setWidth(50);
+        
+        // Tambahkan contoh data
+        $sheet->setCellValue('A2', 'Contoh: Surat Masuk');
+        $sheet->setCellValue('B2', '');
+        $sheet->setCellValue('C2', '1');
+        $sheet->setCellValue('D2', 'SM-001');
+        $sheet->setCellValue('E2', 'Surat Masuk');
+        $sheet->setCellValue('F2', 'Contoh uraian masalah/kegiatan');
+        $sheet->setCellValue('G2', '2024');
+        $sheet->setCellValue('H2', '1');
+        $sheet->setCellValue('I2', 'Asli');
+        $sheet->setCellValue('J2', '1');
+        $sheet->setCellValue('K2', 'Umum');
+        $sheet->setCellValue('L2', '');
+        
+        // Set style untuk contoh
+        $sheet->getStyle('A2:L2')->getFont()->setItalic(true);
+        $sheet->getStyle('A2:L2')->getFont()->getColor()->setARGB('FF808080');
+        
+        // Tambahkan catatan
+        $sheet->setCellValue('A4', 'CATATAN:');
+        $sheet->getStyle('A4')->getFont()->setBold(true);
+        $sheet->setCellValue('A5', '1. Kategori: Kosongkan untuk menggunakan kategori yang dipilih saat import');
+        $sheet->setCellValue('A6', '2. No Berkas: Kosongkan untuk generate otomatis');
+        $sheet->setCellValue('A7', '3. Asli/Kopi: Isi dengan "Asli" atau "Kopi"');
+        $sheet->setCellValue('A8', '4. Klasifikasi Keamanan: Umum, Terbatas, Rahasia, Sangat Rahasia');
+        $sheet->setCellValue('A9', '5. Link Drive: URL lengkap jika tidak upload file');
+        
+        // Output file
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Template_Import_Arsip.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
     }
 }
 

@@ -11,3 +11,5 @@ ALTER TABLE `tb_arsip`
 MODIFY COLUMN `nama_file` varchar(500) NULL,
 MODIFY COLUMN `path_file` varchar(1000) NULL;
 
+
+

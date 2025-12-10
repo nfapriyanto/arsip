@@ -38,6 +38,16 @@
 
 /*
  *---------------------------------------------------------------
+ * OUTPUT BUFFERING
+ *---------------------------------------------------------------
+ *
+ * Start output buffering to prevent headers from being sent early
+ * This fixes session warnings in PHP 8.2+
+ */
+ob_start();
+
+/*
+ *---------------------------------------------------------------
  * APPLICATION ENVIRONMENT
  *---------------------------------------------------------------
  *
@@ -62,11 +72,21 @@
  *
  * Different environments will require different levels of error reporting.
  * By default development will show errors but testing and live will hide them.
+ * 
+ * PHP 8.2+ Compatibility: Exclude E_DEPRECATED warnings for CodeIgniter 3.x
  */
 switch (ENVIRONMENT)
 {
 	case 'development':
-		error_reporting(-1);
+		// Show all errors except deprecation warnings (PHP 8.2+ compatibility)
+		if (version_compare(PHP_VERSION, '8.2', '>='))
+		{
+			error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+		}
+		else
+		{
+			error_reporting(-1);
+		}
 		ini_set('display_errors', 1);
 	break;
 

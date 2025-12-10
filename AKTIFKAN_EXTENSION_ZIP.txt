@@ -1,0 +1,82 @@
+================================================================================
+CARA CEPAT: AKTIFKAN EKSTENSI ZIP DI XAMPP
+================================================================================
+
+Langkah-langkah singkat untuk mengaktifkan ekstensi zip:
+
+1. BUKA XAMPP CONTROL PANEL
+   - Pastikan XAMPP Control Panel sudah terbuka
+
+2. BUKA FILE PHP.INI
+   - Klik tombol "Config" di sebelah Apache
+   - Pilih "PHP (php.ini)"
+   - File php.ini akan terbuka di text editor default Anda
+
+3. CARI DAN AKTIFKAN EKSTENSI ZIP
+   - Tekan Ctrl+F untuk membuka Find
+   - Ketik: ;extension=zip
+   - Tekan Enter untuk mencari
+   - Hapus tanda ; (semicolon) di depan baris tersebut
+   - Seharusnya menjadi: extension=zip
+
+4. PASTIKAN EKSTENSI LAINNYA JUGA AKTIF
+   Cari dan pastikan baris berikut TIDAK ada tanda ; di depannya:
+   
+   extension=zip
+   extension=xml
+   extension=xmlwriter
+   extension=mbstring
+
+5. SIMPAN FILE
+   - Tekan Ctrl+S atau klik File → Save
+   - Tutup file php.ini
+
+6. RESTART APACHE
+   - Di XAMPP Control Panel, klik tombol "Stop" pada Apache
+   - Tunggu beberapa detik
+   - Klik tombol "Start" pada Apache
+   - Atau restart seluruh XAMPP Control Panel
+
+7. VERIFIKASI
+   - Buka browser dan akses: http://localhost/arsip/check_php_extensions.php
+   - Semua ekstensi harus menunjukkan status "✓ AKTIF"
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Jika ekstensi masih tidak aktif setelah restart:
+
+1. Pastikan Anda mengedit file php.ini yang benar
+   - Cek lokasi file di: http://localhost/arsip/check_php_extensions.php
+   - Edit file yang ditunjukkan di sana
+
+2. Pastikan file DLL ada
+   - Cek folder: C:\xampp\php\ext\
+   - Pastikan file php_zip.dll ada di sana
+   - Jika tidak ada, ekstensi mungkin tidak terinstall
+
+3. Cek error log
+   - Buka XAMPP Control Panel
+   - Klik "Logs" di sebelah Apache
+   - Cek apakah ada error terkait ekstensi zip
+
+4. Restart dengan benar
+   - Pastikan Apache benar-benar stop sebelum start lagi
+   - Atau tutup dan buka kembali XAMPP Control Panel
+
+================================================================================
+BANTUAN LEBIH LANJUT
+================================================================================
+
+Untuk panduan lengkap dan verifikasi otomatis, akses:
+http://localhost/arsip/check_php_extensions.php
+
+File ini akan memberikan:
+- Status semua ekstensi yang diperlukan
+- Lokasi file php.ini yang digunakan
+- Instruksi lengkap dengan visual
+- Tips troubleshooting
+
+================================================================================
+

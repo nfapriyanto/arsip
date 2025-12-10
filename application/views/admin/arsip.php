@@ -97,6 +97,16 @@
                 <div class="fa fa-plus"></div> Tambah Arsip
             </div>
 
+            <!-- Tombol Import Excel -->
+            <div class="btn btn-info" data-toggle="modal" data-target="#importExcel">
+                <div class="fa fa-upload"></div> Import Excel
+            </div>
+
+            <!-- Tombol Download Template -->
+            <a href="<?php echo base_url('admin/arsip/download_template'); ?>" class="btn btn-success">
+                <div class="fa fa-download"></div> Download Template Excel
+            </a>
+
             <!-- Tabel Daftar Sub-Kategori -->
             <?php if(isset($sub_kategori) && !empty($sub_kategori)): ?>
             <div class="box box-info" style="margin-top: 15px">
@@ -655,6 +665,54 @@
         </div>
     </div>
   <?php } ?>
+  <?php endif; ?>
+
+  <!-- Modal Import Excel -->
+  <?php if(isset($arsip) && isset($kategori_id)): ?>
+  <div class="modal fade" id="importExcel" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="myModalLabel"><div class="fa fa-upload"></div> Import Data dari Excel</h4>
+        </div>
+        <form action="<?php echo base_url('admin/arsip/import') ?>" method="POST" enctype="multipart/form-data">
+          <div class="modal-body">
+            <input type="hidden" name="kategori_id" value="<?php echo isset($kategori_id) ? $kategori_id : ''; ?>">
+            <div class="form-group">
+                <label>Kategori</label>
+                <input type="text" class="form-control" value="<?php echo isset($kategori_nama) ? $kategori_nama : ''; ?>" readonly>
+                <small class="text-muted">Data akan diimport ke kategori ini (atau sesuai kolom Kategori di Excel)</small>
+            </div>
+            <div class="form-group">
+                <label>File Excel (.xls atau .xlsx) <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" name="file_excel" accept=".xls,.xlsx" required>
+                <small class="text-muted">Format: XLS atau XLSX (Max: 5MB)</small>
+            </div>
+            <div class="alert alert-info">
+              <i class="fa fa-info-circle"></i> <strong>Petunjuk:</strong><br>
+              - Download template Excel terlebih dahulu untuk melihat format yang benar<br>
+              - Pastikan kolom sesuai dengan template<br>
+              - Kategori di Excel (kolom A) opsional, jika kosong akan menggunakan kategori yang dipilih<br>
+              - No Berkas kosong akan digenerate otomatis<br>
+              - Asli/Kopi harus diisi dengan "Asli" atau "Kopi"<br>
+              - Link Drive opsional, bisa dikosongkan jika tidak ada
+            </div>
+            <div class="alert alert-warning">
+              <i class="fa fa-exclamation-triangle"></i> <strong>Perhatian:</strong> Pastikan file Excel sudah sesuai format sebelum diimport!
+            </div>
+          </div>
+          <div class="modal-footer">
+            <a href="<?php echo base_url('admin/arsip/download_template'); ?>" class="btn btn-success">
+                <div class="fa fa-download"></div> Download Template
+            </a>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary"><div class="fa fa-upload"></div> Import</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   <?php endif; ?>
 
 

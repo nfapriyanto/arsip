@@ -1,0 +1,88 @@
+================================================================================
+SOLUSI INSTALL PHPSPREADSHEET - MASALAH GITHUB AUTHENTICATION
+================================================================================
+
+Masalah: Composer meminta GitHub OAuth token saat install PhpSpreadsheet.
+
+SOLUSI 1: SKIP GITHUB TOKEN (UNTUK PUBLIC REPOS)
+-------------------------------------------------
+
+Untuk repository public seperti PhpSpreadsheet, Anda bisa skip token dengan:
+
+1. Tekan Enter saja saat diminta token (kosongkan)
+2. Atau tekan Ctrl+C untuk cancel, lalu jalankan:
+
+   composer install --prefer-dist --no-interaction
+
+3. Atau konfigurasi Composer untuk tidak meminta token:
+
+   composer config --global github-oauth.github.com false
+
+4. Kemudian jalankan lagi:
+   
+   cd application\third_party\PhpSpreadsheet
+   composer install
+
+
+SOLUSI 2: BUAT GITHUB TOKEN (OPSIONAL)
+----------------------------------------
+
+Jika ingin menggunakan token (tidak wajib untuk public repos):
+
+1. Buka: https://github.com/settings/tokens/new
+2. Buat token baru dengan scope: public_repo (read-only)
+3. Copy token
+4. Saat Composer meminta token, paste token tersebut
+
+
+SOLUSI 3: DOWNLOAD MANUAL (JIKA COMPOSER TIDAK BERHASIL)
+---------------------------------------------------------
+
+1. Download PhpSpreadsheet dari:
+   https://github.com/PHPOffice/PhpSpreadsheet/releases
+   Pilih versi terbaru (misalnya: phpspreadsheet-5.3.0.zip)
+
+2. Extract file zip
+
+3. Salin folder "vendor" dari hasil extract ke:
+   C:\xampp\htdocs\arsip\application\third_party\PhpSpreadsheet\
+
+4. Pastikan struktur:
+   application/third_party/PhpSpreadsheet/vendor/autoload.php
+   application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet/
+
+
+SOLUSI 4: GUNAKAN COMPOSER DENGAN PREFER-DIST
+----------------------------------------------
+
+Jalankan di folder: application\third_party\PhpSpreadsheet
+
+composer install --prefer-dist --no-interaction
+
+Atau:
+
+composer require phpoffice/phpspreadsheet --prefer-dist --no-interaction
+
+
+CATATAN PENTING
+---------------
+
+- Untuk repository PUBLIC seperti PhpSpreadsheet, GitHub token TIDAK WAJIB
+- Anda bisa tekan Enter saja saat diminta token (biarkan kosong)
+- Composer akan tetap bisa download dari public repos tanpa token
+- Error "Could not authenticate" biasanya hanya warning, proses tetap berjalan
+
+
+VERIFIKASI
+----------
+
+Setelah install, pastikan file berikut ada:
+✓ application/third_party/PhpSpreadsheet/vendor/autoload.php
+✓ application/third_party/PhpSpreadsheet/vendor/phpoffice/phpspreadsheet/src/Spreadsheet.php
+
+Jika file sudah ada, fitur import Excel sudah siap digunakan!
+
+
+================================================================================
+
+

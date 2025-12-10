@@ -32,3 +32,5 @@ WHERE `keterangan` IS NOT NULL AND `box` IS NULL AND (`keterangan` LIKE '%BOX%' 
 ALTER TABLE `tb_arsip` 
 DROP COLUMN `keterangan`;
 
+
+
