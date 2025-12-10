@@ -169,7 +169,8 @@
                                     <th>ASLI/KOPI</th>
                                     <th>BOX</th>
                                     <th>KLASIFIKASI KEAMANAN</th>
-                                    <th>File</th>
+                                    <th>NAMA PENGISI</th>
+                                    <th>File/Link</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -202,9 +203,16 @@
                                             <?php endif; ?>
                                         </td>
                                         <td><?php echo $ars->klasifikasi_keamanan ? $ars->klasifikasi_keamanan : '-'; ?></td>
+                                        <td><?php echo isset($ars->nama_pengisi) && $ars->nama_pengisi ? $ars->nama_pengisi : '-'; ?></td>
                                         <td>
-                                            <i class="fa fa-file"></i> <?php echo $ars->nama_file; ?><br>
-                                            <small><?php echo $this->m_model->formatBytes($ars->ukuran_file); ?></small>
+                                            <?php if(!empty($ars->nama_file) && !empty($ars->path_file)): ?>
+                                                <i class="fa fa-file"></i> <?php echo $ars->nama_file; ?><br>
+                                                <small><?php echo $this->m_model->formatBytes($ars->ukuran_file); ?></small>
+                                            <?php elseif(!empty($ars->link_drive)): ?>
+                                                <i class="fa fa-cloud"></i> <a href="<?php echo $ars->link_drive; ?>" target="_blank">Link Drive</a>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <!-- Tombol View -->
@@ -315,29 +323,14 @@
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           <h4 class="modal-title" id="myModalLabel"><div class="fa fa-plus"></div> Tambah Arsip</h4>
         </div>
-        <form action="<?php echo base_url('admin/arsip/insert') ?>" method="POST" enctype="multipart/form-data">
+        <form action="<?php echo base_url('admin/arsip/insert') ?>" method="POST" enctype="multipart/form-data" id="formTambahArsip" onsubmit="return validateFileOrLink()">
           <div class="modal-body">
+            <!-- Kategori tidak bisa dipilih, langsung dari kategori yang sedang dibuka -->
+            <input type="hidden" name="kategori_id" value="<?php echo isset($kategori_id) ? $kategori_id : ''; ?>">
             <div class="form-group">
-                <label>Kategori <span class="text-danger">*</span></label>
-                <select class="form-control" name="kategori_id" required>
-                    <option value="">-- Pilih Kategori --</option>
-                    <?php if(isset($list_kategori)): ?>
-                        <?php 
-                        // Tampilkan kategori parent dan sub-kategori dengan indentasi
-                        foreach($list_kategori as $kat): 
-                            $prefix = '';
-                            if($kat->parent_id) {
-                                // Cari nama parent untuk indentasi
-                                $parent = $this->m_model->get_where(array('id' => $kat->parent_id), 'tb_kategori_arsip')->row();
-                                $prefix = ($parent ? $parent->nama . ' > ' : '');
-                            }
-                        ?>
-                            <option value="<?php echo $kat->id; ?>" <?php echo (isset($kategori_id) && $kategori_id == $kat->id) ? 'selected' : ''; ?>>
-                                <?php echo $prefix . $kat->nama; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </select>
+                <label>Kategori</label>
+                <input type="text" class="form-control" value="<?php echo isset($kategori_nama) ? $kategori_nama : ''; ?>" readonly>
+                <small class="text-muted">Arsip akan dibuat di kategori ini</small>
             </div>
             <div class="form-group">
                 <label>NO BERKAS</label>
@@ -397,9 +390,27 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>File Arsip <span class="text-danger">*</span></label>
-                <input type="file" class="form-control" name="file_arsip" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar" required>
-                <small class="text-muted">Format: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR (Max: 10MB)</small>
+                <label>File Arsip atau Link Drive <span class="text-danger">*</span></label>
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="file_type" value="upload" checked onchange="toggleFileInput()">
+                        Upload File
+                    </label>
+                </div>
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="file_type" value="drive" onchange="toggleFileInput()">
+                        Link Drive
+                    </label>
+                </div>
+                <div id="file_upload_section">
+                    <input type="file" class="form-control" id="file_arsip" name="file_arsip" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar" required>
+                    <small class="text-muted">Format: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR (Max: 10MB)</small>
+                </div>
+                <div id="link_drive_section" style="display:none;">
+                    <input type="url" class="form-control" id="link_drive" name="link_drive" placeholder="https://onedrive.live.com/...">
+                    <small class="text-muted">Masukkan link Drive</small>
+                </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -570,9 +581,36 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>File Arsip (Kosongkan jika tidak ingin mengubah)</label>
-                        <input type="file" class="form-control" name="file_arsip" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar">
-                        <small class="text-muted">File saat ini: <?php echo $ars->nama_file; ?> (<?php echo $this->m_model->formatBytes($ars->ukuran_file); ?>)</small>
+                        <label>File Arsip atau Link Drive</label>
+                        <?php 
+                        $has_file = !empty($ars->nama_file) && !empty($ars->path_file);
+                        $has_link = !empty($ars->link_drive);
+                        $current_type = $has_file ? 'upload' : ($has_link ? 'drive' : 'upload');
+                        ?>
+                        <div class="radio">
+                            <label>
+                                <input type="radio" name="file_type_edit<?php echo $ars->id; ?>" value="upload" <?php echo $current_type == 'upload' ? 'checked' : ''; ?> onchange="toggleFileInputEdit(<?php echo $ars->id; ?>)">
+                                Upload File
+                            </label>
+                        </div>
+                        <div class="radio">
+                            <label>
+                                <input type="radio" name="file_type_edit<?php echo $ars->id; ?>" value="drive" <?php echo $current_type == 'drive' ? 'checked' : ''; ?> onchange="toggleFileInputEdit(<?php echo $ars->id; ?>)">
+                                Link Drive
+                            </label>
+                        </div>
+                        <div id="file_upload_section_edit<?php echo $ars->id; ?>" style="display:<?php echo $current_type == 'upload' ? 'block' : 'none'; ?>;">
+                            <input type="file" class="form-control" id="file_arsip_edit<?php echo $ars->id; ?>" name="file_arsip" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar">
+                            <?php if($has_file): ?>
+                                <small class="text-muted">File saat ini: <?php echo $ars->nama_file; ?> (<?php echo $this->m_model->formatBytes($ars->ukuran_file); ?>)</small>
+                            <?php else: ?>
+                                <small class="text-muted">Kosongkan jika tidak ingin mengubah</small>
+                            <?php endif; ?>
+                        </div>
+                        <div id="link_drive_section_edit<?php echo $ars->id; ?>" style="display:<?php echo $current_type == 'drive' ? 'block' : 'none'; ?>;">
+                            <input type="url" class="form-control" id="link_drive_edit<?php echo $ars->id; ?>" name="link_drive" placeholder="https://onedrive.live.com/..." value="<?php echo isset($ars->link_drive) ? $ars->link_drive : ''; ?>">
+                            <small class="text-muted">Masukkan link Drive</small>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -620,3 +658,111 @@
   <?php endif; ?>
 
 
+
+<script>
+$(document).ready(function() {
+    // Inisialisasi toggle saat halaman dimuat untuk form tambah
+    if($('input[name="file_type"]:checked').length > 0) {
+        toggleFileInput();
+    }
+    
+    // Inisialisasi toggle untuk setiap form edit saat modal dibuka
+    $('input[name^="file_type_edit"]').on('change', function() {
+        var id = $(this).attr('name').replace('file_type_edit', '');
+        toggleFileInputEdit(id);
+    });
+    
+    // Inisialisasi saat modal edit dibuka
+    $('[id^="editData"]').on('shown.bs.modal', function() {
+        var modalId = $(this).attr('id');
+        var id = modalId.replace('editData', '');
+        if($('input[name="file_type_edit' + id + '"]:checked').length > 0) {
+            toggleFileInputEdit(id);
+        }
+    });
+});
+
+function toggleFileInput() {
+    var fileType = $('input[name="file_type"]:checked').val();
+    var fileSection = $('#file_upload_section');
+    var linkSection = $('#link_drive_section');
+    var fileInput = $('#file_arsip');
+    var linkInput = $('#link_drive');
+    
+    if(fileType === 'upload') {
+        fileSection.show();
+        linkSection.hide();
+        if(fileInput.length) {
+            fileInput.prop('required', true);
+            fileInput.prop('disabled', false);
+        }
+        if(linkInput.length) {
+            linkInput.prop('required', false);
+            linkInput.val('');
+            linkInput.prop('disabled', true);
+        }
+    } else {
+        fileSection.hide();
+        linkSection.show();
+        if(fileInput.length) {
+            fileInput.prop('required', false);
+            fileInput.val('');
+            fileInput.prop('disabled', true);
+        }
+        if(linkInput.length) {
+            linkInput.prop('required', true);
+            linkInput.prop('disabled', false);
+        }
+    }
+}
+
+function toggleFileInputEdit(id) {
+    var fileType = $('input[name="file_type_edit' + id + '"]:checked').val();
+    var fileSection = $('#file_upload_section_edit' + id);
+    var linkSection = $('#link_drive_section_edit' + id);
+    var fileInput = $('#file_arsip_edit' + id);
+    var linkInput = $('#link_drive_edit' + id);
+    
+    if(fileType === 'upload') {
+        fileSection.show();
+        linkSection.hide();
+        if(linkInput.length) {
+            linkInput.val('');
+            linkInput.prop('disabled', true);
+        }
+        if(fileInput.length) {
+            fileInput.prop('disabled', false);
+        }
+    } else {
+        fileSection.hide();
+        linkSection.show();
+        if(fileInput.length) {
+            fileInput.val('');
+            fileInput.prop('disabled', true);
+        }
+        if(linkInput.length) {
+            linkInput.prop('disabled', false);
+        }
+    }
+}
+
+// Validasi form: harus ada file atau link drive
+function validateFileOrLink() {
+    var fileType = $('input[name="file_type"]:checked').val();
+    var fileInput = $('#file_arsip');
+    var linkInput = $('#link_drive');
+    
+    if(fileType === 'upload') {
+        if(!fileInput[0].files || fileInput[0].files.length === 0) {
+            alert('Harus mengupload file atau memilih Link Drive!');
+            return false;
+        }
+    } else {
+        if(!linkInput.val() || linkInput.val().trim() === '') {
+            alert('Harus mengisi link Drive atau memilih Upload File!');
+            return false;
+        }
+    }
+    return true;
+}
+</script> 

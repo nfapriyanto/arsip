@@ -82,6 +82,20 @@
                             <td><?php echo isset($arsip->klasifikasi_keamanan) ? $arsip->klasifikasi_keamanan : '-'; ?></td>
                         </tr>
                         <tr>
+                            <th>NAMA PENGISI</th>
+                            <td><?php echo isset($arsip->nama_pengisi) && $arsip->nama_pengisi ? $arsip->nama_pengisi : '-'; ?></td>
+                        </tr>
+                        <tr>
+                            <th>LINK DRIVE</th>
+                            <td>
+                                <?php if(isset($arsip->link_drive) && $arsip->link_drive): ?>
+                                    <a href="<?php echo $arsip->link_drive; ?>" target="_blank"><?php echo $arsip->link_drive; ?></a>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
                             <th>Kategori</th>
                             <td>
                                 <?php 
@@ -91,8 +105,17 @@
                             </td>
                         </tr>
                         <tr>
-                            <th>File</th>
-                            <td><?php echo $arsip->nama_file; ?></td>
+                            <th>File/Link</th>
+                            <td>
+                                <?php if(!empty($arsip->nama_file) && !empty($arsip->path_file)): ?>
+                                    <i class="fa fa-file"></i> <?php echo $arsip->nama_file; ?><br>
+                                    <small><?php echo $this->m_model->formatBytes($arsip->ukuran_file); ?></small>
+                                <?php elseif(!empty($arsip->link_drive)): ?>
+                                    <i class="fa fa-cloud"></i> <a href="<?php echo $arsip->link_drive; ?>" target="_blank"><?php echo $arsip->link_drive; ?></a>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     </table>
                 </div>

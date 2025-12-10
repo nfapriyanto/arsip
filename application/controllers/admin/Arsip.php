@@ -182,6 +182,7 @@ class Arsip extends CI_Controller {
     {
         date_default_timezone_set('Asia/Jakarta');
         
+        // Kategori diambil dari URL, tidak bisa dipilih
         $kategori_id                = $this->input->post('kategori_id');
         $no_berkas                  = $this->input->post('no_berkas');
         $no_urut                    = $this->input->post('no_urut');
@@ -193,40 +194,65 @@ class Arsip extends CI_Controller {
         $asli_kopi                  = $this->input->post('asli_kopi');
         $box                        = $this->input->post('box');
         $klasifikasi_keamanan       = $this->input->post('klasifikasi_keamanan');
+        $link_drive                 = $this->input->post('link_drive');
         $createDate                 = date('Y-m-d H:i:s');
         
-        // Validasi
+        // Ambil nama user dari session
+        $user_id = $this->session->userdata('id');
+        $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
+        $nama_pengisi = $user ? $user->nama : NULL;
+        
+        // Validasi kategori harus ada
         if(empty($kategori_id)) {
-            $this->session->set_flashdata('pesan', 'Kategori harus diisi!');
+            $this->session->set_flashdata('pesan', 'Kategori tidak valid!');
+            redirect('admin/arsip');
+            return;
+        }
+
+        // Validasi: Harus ada file upload ATAU link drive
+        $file_uploaded = !empty($_FILES['file_arsip']['name']);
+        $link_drive_filled = !empty($link_drive);
+        
+        if(!$file_uploaded && !$link_drive_filled) {
+            $this->session->set_flashdata('pesan', 'Harus mengupload file atau mengisi link drive!');
             redirect('admin/arsip/kategori/' . $kategori_id);
             return;
         }
 
-        // Konfigurasi upload
-        $config['upload_path'] = './uploads/arsip/';
-        $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
-        $config['max_size'] = 10240; // 10MB
-        $config['encrypt_name'] = TRUE;
-        
-        // Buat folder jika belum ada
-        if(!is_dir($config['upload_path'])) {
-            mkdir($config['upload_path'], 0777, TRUE);
+        // Inisialisasi variabel file
+        $nama_file = NULL;
+        $path_file = NULL;
+        $ukuran_file = NULL;
+        $tipe_file = NULL;
+
+        // Jika ada file yang diupload
+        if($file_uploaded) {
+            // Konfigurasi upload
+            $config['upload_path'] = './uploads/arsip/';
+            $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
+            $config['max_size'] = 10240; // 10MB
+            $config['encrypt_name'] = TRUE;
+            
+            // Buat folder jika belum ada
+            if(!is_dir($config['upload_path'])) {
+                mkdir($config['upload_path'], 0777, TRUE);
+            }
+            
+            $this->upload->initialize($config);
+            
+            if (!$this->upload->do_upload('file_arsip')) {
+                $error = $this->upload->display_errors();
+                $this->session->set_flashdata('pesan', 'Upload gagal: ' . $error);
+                redirect('admin/arsip/kategori/' . $kategori_id);
+                return;
+            }
+            
+            $upload_data = $this->upload->data();
+            $nama_file = $upload_data['file_name'];
+            $path_file = $config['upload_path'] . $nama_file;
+            $ukuran_file = $upload_data['file_size'];
+            $tipe_file = $upload_data['file_type'];
         }
-        
-        $this->upload->initialize($config);
-        
-        if (!$this->upload->do_upload('file_arsip')) {
-            $error = $this->upload->display_errors();
-            $this->session->set_flashdata('pesan', 'Upload gagal: ' . $error);
-            redirect('admin/arsip/kategori/' . $kategori_id);
-            return;
-        }
-        
-        $upload_data = $this->upload->data();
-        $nama_file = $upload_data['file_name'];
-        $path_file = $config['upload_path'] . $nama_file;
-        $ukuran_file = $upload_data['file_size'];
-        $tipe_file = $upload_data['file_type'];
         
         // Jika no_berkas kosong, generate otomatis
         if(empty($no_berkas)) {
@@ -250,6 +276,8 @@ class Arsip extends CI_Controller {
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
             'klasifikasi_keamanan'   => $klasifikasi_keamanan,
+            'nama_pengisi'           => $nama_pengisi,
+            'link_drive'             => $link_drive,
             'nama_file'              => $nama_file,
             'path_file'              => $path_file,
             'ukuran_file'            => $ukuran_file,
@@ -370,6 +398,12 @@ class Arsip extends CI_Controller {
         $asli_kopi               = $this->input->post('asli_kopi');
         $box                     = $this->input->post('box');
         $klasifikasi_keamanan    = $this->input->post('klasifikasi_keamanan');
+        $link_drive              = $this->input->post('link_drive');
+        
+        // Ambil nama user dari session untuk update
+        $user_id = $this->session->userdata('id');
+        $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
+        $nama_pengisi = $user ? $user->nama : NULL;
         $updateDate              = date('Y-m-d H:i:s');
 
         $where = array('id' => $id);
@@ -386,11 +420,17 @@ class Arsip extends CI_Controller {
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
             'klasifikasi_keamanan'   => $klasifikasi_keamanan,
+            'nama_pengisi'           => $nama_pengisi,
+            'link_drive'             => $link_drive,
             'updateDate'             => $updateDate
         );
         
+        // Validasi: Harus ada file upload ATAU link drive (hanya saat update, tidak wajib)
+        $file_uploaded = !empty($_FILES['file_arsip']['name']);
+        $link_drive_filled = !empty($link_drive);
+        
         // Jika ada file baru diupload
-        if(!empty($_FILES['file_arsip']['name'])) {
+        if($file_uploaded) {
             // Hapus file lama
             $arsip_lama = $this->m_model->get_where($where, 'tb_arsip')->row();
             if($arsip_lama && file_exists($arsip_lama->path_file)) {
