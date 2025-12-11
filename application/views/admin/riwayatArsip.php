@@ -82,7 +82,7 @@
                             <td><?php echo isset($arsip->klasifikasi_keamanan) ? $arsip->klasifikasi_keamanan : '-'; ?></td>
                         </tr>
                         <tr>
-                            <th>NAMA PENGISI</th>
+                            <th>NAMA PIC</th>
                             <td><?php echo isset($arsip->nama_pengisi) && $arsip->nama_pengisi ? $arsip->nama_pengisi : '-'; ?></td>
                         </tr>
                         <tr>

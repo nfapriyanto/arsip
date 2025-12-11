@@ -232,6 +232,105 @@
 
 <!-- Sweet Alert -->
 <script src="<?php echo base_url('assets/sweetalert') ?>/sweetalert.min.js"></script>
+<!-- Raphael.js (required for Morris.js) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
+<!-- Morris.js charts -->
+<script src="<?php echo base_url('assets') ?>/plugins/morris/morris.min.js"></script>
+<script type="text/javascript">
+// Variabel global untuk menyimpan instance chart
+var barChart = null;
+
+// Fungsi untuk membuat/update chart
+function updateChart(chartData) {
+    // Hapus chart lama jika ada
+    if (barChart !== null) {
+        $('#statistikChart').empty();
+        barChart = null;
+    }
+    
+    // Pastikan spinner dihapus terlebih dahulu
+    $('#statistikChart').empty();
+    
+    // Tampilkan/sembunyikan pesan kosong
+    if (chartData.length === 0) {
+        $('#statistikChart').hide();
+        $('#chartEmpty').show();
+        return;
+    } else {
+        $('#statistikChart').show();
+        $('#chartEmpty').hide();
+    }
+    
+    // Pastikan Morris.js sudah dimuat
+    if (typeof Morris !== 'undefined') {
+        // Buat chart baru
+        barChart = new Morris.Bar({
+            element: 'statistikChart',
+            data: chartData,
+            xkey: 'y',
+            ykeys: ['a'],
+            labels: ['Jumlah Arsip'],
+            barColors: ['#3c8dbc'],
+            resize: true,
+            hideHover: 'auto',
+            xLabelAngle: 45,
+            yLabelFormat: function(y) {
+                return y.toString();
+            }
+        });
+    } else {
+        console.error('Morris.js is not loaded');
+        $('#statistikChart').html('<div class="alert alert-danger">Error: Morris.js tidak dimuat</div>');
+    }
+}
+
+// Inisialisasi Morris.js Bar Chart untuk statistik kategori
+$(document).ready(function() {
+    // Inisialisasi chart dengan data awal
+    if (typeof window.statistikChartData !== 'undefined') {
+        updateChart(window.statistikChartData);
+    }
+    
+    // Handle perubahan dropdown kategori parent
+    $('#selectParentKategori').on('change', function() {
+        var parentId = $(this).val();
+        
+        // Hapus chart lama jika ada
+        if (barChart !== null) {
+            $('#statistikChart').empty();
+            barChart = null;
+        }
+        
+        // Tampilkan loading
+        $('#statistikChart').html('<div style="text-align: center; padding: 50px;"><i class="fa fa-spinner fa-spin fa-3x"></i><br><br>Memuat data...</div>');
+        $('#statistikChart').show();
+        $('#chartEmpty').hide();
+        
+        // AJAX request untuk mengambil data baru
+        $.ajax({
+            url: '<?php echo base_url("admin/dashboard/getStatistikByParent"); ?>',
+            type: 'POST',
+            data: {
+                parent_id: parentId
+            },
+            dataType: 'json',
+            success: function(response) {
+                // Pastikan spinner dihapus sebelum update chart
+                $('#statistikChart').empty();
+                // Update chart dengan data baru
+                updateChart(response);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading chart data:', error);
+                // Hapus spinner dan tampilkan error
+                $('#statistikChart').html('<div class="alert alert-danger"><i class="fa fa-exclamation-triangle"></i> Error memuat data statistik. Silakan coba lagi.</div>');
+                $('#statistikChart').show();
+                $('#chartEmpty').hide();
+            }
+        });
+    });
+});
+</script>
 <script>
     //Notifikasi
     const flashDataElement = $('.flash-data');

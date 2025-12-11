@@ -179,7 +179,7 @@
                                     <th>ASLI/KOPI</th>
                                     <th>BOX</th>
                                     <th>KLASIFIKASI KEAMANAN</th>
-                                    <th>NAMA PENGISI</th>
+                                    <th>NAMA PIC</th>
                                     <th>File/Link</th>
                                     <th>Action</th>
                                 </tr>
@@ -481,6 +481,9 @@
                     <div class="form-group">
                         <label>Nama Sub-Kategori</label>
                         <input type="hidden" name="id" value="<?php echo $sub->id; ?>">
+                        <?php if(isset($kategori_id)): ?>
+                        <input type="hidden" name="current_kategori_id" value="<?php echo $kategori_id; ?>">
+                        <?php endif; ?>
                         <input type="text" class="form-control" name="nama" placeholder="Nama Sub-Kategori" value="<?php echo $sub->nama; ?>" required>
                     </div>
                     <div class="form-group">
@@ -649,6 +652,9 @@
                     <div class="form-group">
                         <label>Nama Sub-Kategori</label>
                         <input type="hidden" name="id" value="<?php echo $sub->id; ?>">
+                        <?php if(isset($kategori_id)): ?>
+                        <input type="hidden" name="current_kategori_id" value="<?php echo $kategori_id; ?>">
+                        <?php endif; ?>
                         <input type="text" class="form-control" name="nama" placeholder="Nama Sub-Kategori" value="<?php echo $sub->nama; ?>" required>
                     </div>
                     <div class="form-group">

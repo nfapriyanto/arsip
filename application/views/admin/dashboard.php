@@ -85,26 +85,35 @@
               </div>
             </div>
         <div class="col-md-12">
-            <div class="box box-widget widget-user-2">
-              <!-- Add the bg color to the header using any of the bg-* classes -->
-              <div class="widget-user-header bg-green">
-                <div class="widget-user-image">
-                  <img class="img-circle" src="<?php echo base_url('assets') ?>/dist/img/avatar4.png" alt="User Avatar">
+            <div class="box box-widget">
+              <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-bar-chart"></i> Statistik Kategori Arsip</h3>
+                <div class="box-tools pull-right">
+                  <div class="form-group" style="margin: 0; padding: 5px 0;">
+                    <label style="margin-right: 10px; font-weight: normal;">Pilih Kategori Parent:</label>
+                    <select id="selectParentKategori" class="form-control" style="display: inline-block; width: auto; min-width: 200px;">
+                      <option value="all" <?php echo (empty($selectedParentId) || $selectedParentId == 'all') ? 'selected' : ''; ?>>Semua Kategori</option>
+                      <?php if(!empty($listKategoriParent)): ?>
+                        <?php foreach($listKategoriParent as $parent): ?>
+                          <option value="<?php echo $parent->id; ?>" <?php echo ($selectedParentId == $parent->id) ? 'selected' : ''; ?>>
+                            <?php echo $parent->nama; ?>
+                          </option>
+                        <?php endforeach; ?>
+                      <?php endif; ?>
+                    </select>
+                  </div>
                 </div>
-                <!-- /.widget-user-image -->
-                <h3 class="widget-user-username"><?php echo $this->session->userdata('nama'); ?></h3>
-                <h5 class="widget-user-desc">Terdaftar Pada <?php echo date('d-M-Y H:i:s', strtotime($this->session->userdata('createDate'))); ?></h5>
               </div>
-              <div class="box-footer no-padding">
-                <ul class="nav nav-stacked">
-                  <li><a>Aplikasi <span class="pull-right badge bg-red">Sistem Arsip Digital</span></a></li>
-                  <li><a>Nama Lengkap <span class="pull-right badge bg-red"><?php echo $this->session->userdata('nama'); ?></span></a></li>
-                  <li><a>Username <span class="pull-right badge bg-red"><?php echo $this->session->userdata('username'); ?></span></a></li>
-                  <li><a>Password <span class="pull-right badge bg-red">Disembunyikan</span></a></li>
-                  <li><a>Level <span class="pull-right badge bg-red"><?php echo $this->session->userdata('level'); ?></span></a></li>
-                  <li><a>Terdaftar Pada <span class="pull-right badge bg-red"><?php echo date('d-M-Y H:i:s', strtotime($this->session->userdata('createDate'))); ?></span></a></li>
-                  <li><a>Alamat IP <span class="pull-right badge bg-red"><?php echo base_url() ?></span></a></li>
-                </ul>
+              <div class="box-body">
+                <div id="statistikChart" style="height: 400px;"></div>
+                <div id="chartEmpty" class="alert alert-info" style="display: none;">
+                  <i class="fa fa-info-circle"></i> Belum ada sub-kategori arsip yang tersedia untuk kategori parent yang dipilih.
+                </div>
+              </div>
+              <div class="box-footer">
+                <a href="<?php echo base_url('admin/arsip') ?>" class="btn btn-primary btn-sm">
+                  <i class="fa fa-folder"></i> Kelola Kategori Arsip
+                </a>
               </div>
             </div>
         </div>
@@ -113,3 +122,24 @@
     <!-- /.content -->
   </div>
   <!-- /.content-wrapper -->
+
+<script type="text/javascript">
+// Simpan data chart awal untuk digunakan di footer
+window.statistikChartData = [
+    <?php 
+    if(!empty($statistikKategori)):
+        $first = true;
+        foreach($statistikKategori as $stat): 
+            if(!$first) echo ',';
+            $first = false;
+        ?>
+        {
+            y: '<?php echo addslashes($stat->nama); ?>',
+            a: <?php echo $stat->jumlah_arsip; ?>
+        }
+        <?php 
+        endforeach;
+    endif;
+    ?>
+];
+</script>

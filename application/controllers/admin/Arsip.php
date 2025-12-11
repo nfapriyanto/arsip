@@ -140,6 +140,10 @@ class Arsip extends CI_Controller {
 
     public function delete_kategori($id)
     {
+        // Ambil data kategori sebelum dihapus untuk mendapatkan parent_id
+        $where = array('id' => $id);
+        $kategori = $this->m_model->get_where($where, 'tb_kategori_arsip')->row();
+        
         // Cek apakah kategori memiliki arsip
         $where_arsip = array('kategori_id' => $id);
         $jumlah_arsip = $this->m_model->get_where($where_arsip, 'tb_arsip')->num_rows();
@@ -150,15 +154,31 @@ class Arsip extends CI_Controller {
         
         if($jumlah_arsip > 0 || $jumlah_sub > 0) {
             $this->session->set_flashdata('pesan', 'Kategori tidak dapat dihapus karena masih memiliki arsip atau sub-kategori!');
-            redirect('admin/arsip');
+            
+            // Redirect ke halaman yang sesuai
+            if($kategori && !empty($kategori->parent_id)) {
+                redirect('admin/arsip/kategori/' . $kategori->parent_id);
+            } else {
+                redirect('admin/arsip');
+            }
             return;
         }
         
+        // Simpan parent_id sebelum menghapus
+        $parent_id = $kategori ? $kategori->parent_id : null;
+        
         // Hapus kategori
-        $where = array('id' => $id);
         $this->m_model->delete($where, 'tb_kategori_arsip');
         $this->session->set_flashdata('pesan', 'Kategori berhasil dihapus!');
-        redirect('admin/arsip');
+        
+        // Redirect ke halaman yang sesuai
+        if(!empty($parent_id)) {
+            // Jika yang dihapus adalah sub-kategori, redirect ke parent-nya
+            redirect('admin/arsip/kategori/' . $parent_id);
+        } else {
+            // Jika yang dihapus adalah kategori parent, redirect ke halaman utama
+            redirect('admin/arsip');
+        }
     }
 
     public function insert_kategori()
@@ -381,6 +401,7 @@ class Arsip extends CI_Controller {
         $id      = $this->input->post('id');
         $nama    = $this->input->post('nama');
         $deskripsi = $this->input->post('deskripsi');
+        $current_kategori_id = $this->input->post('current_kategori_id'); // ID kategori halaman saat ini
         
         $where = array('id' => $id);
         $data = array(
@@ -390,7 +411,21 @@ class Arsip extends CI_Controller {
 
         $this->m_model->update($where, $data, 'tb_kategori_arsip');
         $this->session->set_flashdata('pesan', 'Kategori berhasil diubah!');
-        redirect('admin/arsip');
+        
+        // Ambil data kategori yang baru saja diupdate untuk mendapatkan parent_id
+        $kategori = $this->m_model->get_where($where, 'tb_kategori_arsip')->row();
+        
+        // Redirect ke halaman yang sesuai
+        if(!empty($current_kategori_id)) {
+            // Jika ada current_kategori_id, redirect ke halaman kategori tersebut
+            redirect('admin/arsip/kategori/' . $current_kategori_id);
+        } elseif($kategori && !empty($kategori->parent_id)) {
+            // Jika kategori yang diupdate adalah sub-kategori, redirect ke parent-nya
+            redirect('admin/arsip/kategori/' . $kategori->parent_id);
+        } else {
+            // Default redirect ke halaman utama
+            redirect('admin/arsip');
+        }
     }
 
     public function update()
