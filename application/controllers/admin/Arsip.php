@@ -980,6 +980,183 @@ class Arsip extends CI_Controller {
         $writer->save('php://output');
         exit;
     }
+    
+    public function export_excel($kategori_id = null)
+    {
+        // Validasi kategori_id
+        if(empty($kategori_id) || !is_numeric($kategori_id)) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak valid!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        // Ambil data kategori
+        $where_kategori = array('id' => $kategori_id);
+        $kategori = $this->m_model->get_where($where_kategori, 'tb_kategori_arsip')->row();
+        
+        if(!$kategori) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak ditemukan!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        // Load PhpSpreadsheet
+        $load_result = $this->loadPhpSpreadsheet();
+        if(!$load_result['success']) {
+            $this->session->set_flashdata('pesan', $load_result['message']);
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+        
+        // Ambil semua arsip dengan kategori_id yang sama
+        $this->db->select('a.*, k.nama as kategori_nama');
+        $this->db->from('tb_arsip a');
+        $this->db->join('tb_kategori_arsip k', 'k.id = a.kategori_id', 'left');
+        $this->db->where('a.kategori_id', $kategori_id);
+        $this->db->order_by('a.createDate', 'DESC');
+        $arsip = $this->db->get()->result();
+        
+        // Buat spreadsheet baru
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Set judul sheet
+        $sheet->setTitle('Daftar Arsip');
+        
+        // Set header
+        $headers = array(
+            'A1' => 'No',
+            'B1' => 'No Berkas',
+            'C1' => 'No Urut',
+            'D1' => 'Kode',
+            'E1' => 'Indeks/Pekerjaan',
+            'F1' => 'Uraian Masalah/Kegiatan',
+            'G1' => 'Tahun',
+            'H1' => 'Jumlah Berkas',
+            'I1' => 'Asli/Kopi',
+            'J1' => 'Box',
+            'K1' => 'Klasifikasi Keamanan',
+            'L1' => 'Nama PIC',
+            'M1' => 'Nama File',
+            'N1' => 'Link Drive',
+            'O1' => 'Ukuran File',
+            'P1' => 'Tanggal Dibuat',
+            'Q1' => 'Tanggal Diupdate'
+        );
+        
+        foreach($headers as $cell => $value) {
+            $sheet->setCellValue($cell, $value);
+        }
+        
+        // Set style untuk header
+        $sheet->getStyle('A1:Q1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:Q1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF4472C4');
+        $sheet->getStyle('A1:Q1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:Q1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A1:Q1')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        
+        // Set width kolom
+        $sheet->getColumnDimension('A')->setWidth(5);
+        $sheet->getColumnDimension('B')->setWidth(20);
+        $sheet->getColumnDimension('C')->setWidth(12);
+        $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('E')->setWidth(25);
+        $sheet->getColumnDimension('F')->setWidth(40);
+        $sheet->getColumnDimension('G')->setWidth(10);
+        $sheet->getColumnDimension('H')->setWidth(15);
+        $sheet->getColumnDimension('I')->setWidth(12);
+        $sheet->getColumnDimension('J')->setWidth(12);
+        $sheet->getColumnDimension('K')->setWidth(25);
+        $sheet->getColumnDimension('L')->setWidth(20);
+        $sheet->getColumnDimension('M')->setWidth(30);
+        $sheet->getColumnDimension('N')->setWidth(50);
+        $sheet->getColumnDimension('O')->setWidth(15);
+        $sheet->getColumnDimension('P')->setWidth(20);
+        $sheet->getColumnDimension('Q')->setWidth(20);
+        
+        // Isi data
+        $row = 2;
+        $no = 1;
+        foreach($arsip as $ars) {
+            $sheet->setCellValue('A' . $row, $no++);
+            $sheet->setCellValue('B' . $row, $ars->no_berkas ? $ars->no_berkas : '-');
+            $sheet->setCellValue('C' . $row, $ars->no_urut ? $ars->no_urut : '-');
+            $sheet->setCellValue('D' . $row, $ars->kode ? $ars->kode : '-');
+            $sheet->setCellValue('E' . $row, $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-');
+            $sheet->setCellValue('F' . $row, $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-');
+            $sheet->setCellValue('G' . $row, $ars->tahun ? $ars->tahun : '-');
+            $sheet->setCellValue('H' . $row, $ars->jumlah_berkas ? $ars->jumlah_berkas : 1);
+            $sheet->setCellValue('I' . $row, $ars->asli_kopi ? $ars->asli_kopi : '-');
+            $sheet->setCellValue('J' . $row, $ars->box ? $ars->box : '-');
+            $sheet->setCellValue('K' . $row, $ars->klasifikasi_keamanan ? $ars->klasifikasi_keamanan : '-');
+            $sheet->setCellValue('L' . $row, $ars->nama_pengisi ? $ars->nama_pengisi : '-');
+            $sheet->setCellValue('M' . $row, $ars->nama_file ? $ars->nama_file : '-');
+            $sheet->setCellValue('N' . $row, $ars->link_drive ? $ars->link_drive : '-');
+            
+            // Format ukuran file
+            $ukuran = '-';
+            if($ars->ukuran_file) {
+                $ukuran = $this->formatBytes($ars->ukuran_file);
+            }
+            $sheet->setCellValue('O' . $row, $ukuran);
+            
+            // Format tanggal
+            $createDate = $ars->createDate ? date('d-m-Y H:i:s', strtotime($ars->createDate)) : '-';
+            $updateDate = $ars->updateDate ? date('d-m-Y H:i:s', strtotime($ars->updateDate)) : '-';
+            $sheet->setCellValue('P' . $row, $createDate);
+            $sheet->setCellValue('Q' . $row, $updateDate);
+            
+            // Set wrap text untuk kolom yang panjang
+            $sheet->getStyle('F' . $row)->getAlignment()->setWrapText(true);
+            $sheet->getStyle('N' . $row)->getAlignment()->setWrapText(true);
+            
+            $row++;
+        }
+        
+        // Set border untuk semua data
+        $lastRow = $row - 1;
+        $sheet->getStyle('A1:Q' . $lastRow)->applyFromArray(array(
+            'borders' => array(
+                'allBorders' => array(
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => array('argb' => 'FF000000'),
+                ),
+            ),
+        ));
+        
+        // Set judul dokumen
+        $spreadsheet->getProperties()
+            ->setCreator('Sistem Arsip Digital')
+            ->setTitle('Daftar Arsip - ' . $kategori->nama)
+            ->setSubject('Export Daftar Arsip')
+            ->setDescription('Daftar arsip untuk kategori: ' . $kategori->nama);
+        
+        // Output file
+        $filename = 'Daftar_Arsip_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $kategori->nama) . '_' . date('YmdHis') . '.xlsx';
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+    
+    private function formatBytes($bytes, $precision = 2)
+    {
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, $precision) . ' ' . $units[$pow];
+    }
 }
 
 

@@ -90,7 +90,7 @@
                 <h3 class="box-title"><i class="fa fa-bar-chart"></i> Statistik Kategori Arsip</h3>
                 <div class="box-tools pull-right">
                   <div class="form-group" style="margin: 0; padding: 5px 0;">
-                    <label style="margin-right: 10px; font-weight: normal;">Pilih Kategori Parent:</label>
+                    <label style="margin-right: 10px; font-weight: normal;">Pilih Kategori:</label>
                     <select id="selectParentKategori" class="form-control" style="display: inline-block; width: auto; min-width: 200px;">
                       <option value="all" <?php echo (empty($selectedParentId) || $selectedParentId == 'all') ? 'selected' : ''; ?>>Semua Kategori</option>
                       <?php if(!empty($listKategoriParent)): ?>

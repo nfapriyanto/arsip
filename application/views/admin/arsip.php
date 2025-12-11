@@ -83,8 +83,20 @@
         <?php elseif(isset($arsip) && isset($kategori_id)): ?>
             <!-- TAMPILAN DAFTAR ARSIP PER KATEGORI -->
             <!-- Tombol Kembali -->
-            <a href="<?php echo base_url('admin/arsip') ?>" class="btn btn-default">
-                <div class="fa fa-arrow-left"></div> Kembali ke Kategori
+            <?php 
+            // Tentukan URL kembali berdasarkan parent_id
+            if(isset($kategori_parent_id) && !empty($kategori_parent_id)) {
+                // Jika ada parent_id, kembali ke halaman kategori parent
+                $back_url = base_url('admin/arsip/kategori/' . $kategori_parent_id);
+                $back_text = 'Kembali ke Kategori Parent';
+            } else {
+                // Jika tidak ada parent_id, kembali ke halaman utama kategori
+                $back_url = base_url('admin/arsip');
+                $back_text = 'Kembali ke Kategori';
+            }
+            ?>
+            <a href="<?php echo $back_url; ?>" class="btn btn-default">
+                <div class="fa fa-arrow-left"></div> <?php echo $back_text; ?>
             </a>
 
             <!-- Tombol Tambah Kategori -->
@@ -102,9 +114,9 @@
                 <div class="fa fa-upload"></div> Import Excel
             </div>
 
-            <!-- Tombol Download Template -->
-            <a href="<?php echo base_url('admin/arsip/download_template'); ?>" class="btn btn-success">
-                <div class="fa fa-download"></div> Download Template Excel
+            <!-- Tombol Export Excel -->
+            <a href="<?php echo base_url('admin/arsip/export_excel/' . $kategori_id); ?>" class="btn btn-success">
+                <div class="fa fa-download"></div> Export Excel
             </a>
 
             <!-- Tabel Daftar Sub-Kategori -->
