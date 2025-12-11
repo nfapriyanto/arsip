@@ -21,12 +21,12 @@ class Arsip extends CI_Controller {
         $data['title'] = 'Data Kategori Arsip';
         
         // Ambil hanya kategori parent (parent_id IS NULL) dengan total arsip
-        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as total_arsip, COUNT(DISTINCT sub.id) as total_sub');
+        $this->db->select('k.id, k.nama, k.parent_id, COUNT(DISTINCT a.id) as total_arsip, COUNT(DISTINCT sub.id) as total_sub');
         $this->db->from('tb_kategori_arsip k');
         $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
         $this->db->join('tb_kategori_arsip sub', 'sub.parent_id = k.id', 'left');
         $this->db->where('k.parent_id IS NULL');
-        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
+        $this->db->group_by('k.id, k.nama, k.parent_id');
         $this->db->order_by('k.nama', 'ASC');
         $kategori = $this->db->get()->result();
         
@@ -69,11 +69,11 @@ class Arsip extends CI_Controller {
         $arsip = $this->db->get()->result();
         
         // Ambil sub-kategori jika ada dengan total arsip
-        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as total_arsip');
+        $this->db->select('k.id, k.nama, k.parent_id, COUNT(DISTINCT a.id) as total_arsip');
         $this->db->from('tb_kategori_arsip k');
         $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
         $this->db->where('k.parent_id', $id);
-        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
+        $this->db->group_by('k.id, k.nama, k.parent_id');
         $this->db->order_by('k.nama', 'ASC');
         $sub_kategori = $this->db->get()->result();
         
@@ -82,6 +82,13 @@ class Arsip extends CI_Controller {
         $data['kategori_id'] = $id;
         $data['kategori_nama'] = $kategori->nama;
         $data['kategori_parent_id'] = $kategori->parent_id;
+        
+        // Ambil data kategori parent jika ada (untuk breadcrumb)
+        $data['kategori_parent'] = null;
+        if(!empty($kategori->parent_id)) {
+            $where_parent = array('id' => $kategori->parent_id);
+            $data['kategori_parent'] = $this->m_model->get_where($where_parent, 'tb_kategori_arsip')->row();
+        }
         
         // Ambil semua kategori untuk dropdown form (termasuk sub-kategori untuk form arsip)
         $this->db->order_by('nama', 'ASC');
@@ -185,13 +192,11 @@ class Arsip extends CI_Controller {
     {
         date_default_timezone_set('Asia/Jakarta');
         $nama       = $this->input->post('nama');
-        $deskripsi  = $this->input->post('deskripsi');
         $parent_id  = $this->input->post('parent_id'); // Untuk kategori bertingkat
         $createDate = date('Y-m-d H:i:s');
 
         $data = array(
             'nama'          => $nama,
-            'deskripsi'     => $deskripsi,
             'parent_id'     => !empty($parent_id) ? $parent_id : NULL,
             'createDate'    => $createDate,
         );
@@ -291,6 +296,11 @@ class Arsip extends CI_Controller {
         // Default jumlah_berkas jika kosong
         if(empty($jumlah_berkas)) {
             $jumlah_berkas = 1;
+        }
+        
+        // Default indeks_pekerjaan jika kosong
+        if(empty($indeks_pekerjaan)) {
+            $indeks_pekerjaan = 'Satker Balai Penilaian Kompetensi';
         }
 
         $data = array(
@@ -400,13 +410,11 @@ class Arsip extends CI_Controller {
     {
         $id      = $this->input->post('id');
         $nama    = $this->input->post('nama');
-        $deskripsi = $this->input->post('deskripsi');
         $current_kategori_id = $this->input->post('current_kategori_id'); // ID kategori halaman saat ini
         
         $where = array('id' => $id);
         $data = array(
-            'nama'      => $nama,
-            'deskripsi' => $deskripsi
+            'nama'      => $nama
         );
 
         $this->m_model->update($where, $data, 'tb_kategori_arsip');
@@ -449,6 +457,11 @@ class Arsip extends CI_Controller {
         $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
         $nama_pengisi = $user ? $user->nama : NULL;
         $updateDate              = date('Y-m-d H:i:s');
+        
+        // Default indeks_pekerjaan jika kosong
+        if(empty($indeks_pekerjaan)) {
+            $indeks_pekerjaan = 'Satker Balai Penilaian Kompetensi';
+        }
 
         $where = array('id' => $id);
         

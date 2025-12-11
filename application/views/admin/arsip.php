@@ -3,12 +3,26 @@
     <!-- Content Header (Page header) -->
     <section class="content-header">
       <h1>
-        Data Arsip
+        <?php if(isset($kategori_nama)): ?>
+          <?php echo $kategori_nama; ?>
+        <?php else: ?>
+          Data Arsip
+        <?php endif; ?>
         <small>Data Arsip Digital</small>
       </h1>
       <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li class="active">Data Arsip</li>
+        <li><a href="<?php echo base_url('admin/dashboard'); ?>"><i class="fa fa-dashboard"></i> Home</a></li>
+        <?php if(isset($kategori_parent) && !empty($kategori_parent)): ?>
+          <!-- Jika ada kategori parent, tampilkan: Home > [Nama Parent] > [Nama Kategori] -->
+          <li><a href="<?php echo base_url('admin/arsip/kategori/' . $kategori_parent->id); ?>"><?php echo $kategori_parent->nama; ?></a></li>
+          <li class="active"><?php echo isset($kategori_nama) ? $kategori_nama : 'Data Arsip'; ?></li>
+        <?php elseif(isset($kategori_nama)): ?>
+          <!-- Jika kategori parent, tampilkan: Home > [Nama Kategori] -->
+          <li class="active"><?php echo $kategori_nama; ?></li>
+        <?php else: ?>
+          <!-- Jika halaman utama kategori, tampilkan: Home > Data Arsip -->
+          <li class="active">Data Arsip</li>
+        <?php endif; ?>
       </ol>
     </section>
 
@@ -41,7 +55,6 @@
                                 <tr>
                                     <th width="5px">No</th>
                                     <th>Nama Kategori</th>
-                                    <th>Deskripsi</th>
                                     <th>Total Arsip</th>
                                     <th>Sub-Kategori</th>
                                     <th>Action</th>
@@ -55,7 +68,6 @@
                                     <tr>
                                         <td><?php echo $no++; ?></td>
                                         <td><strong><?php echo $kat->nama; ?></strong></td>
-                                        <td><?php echo $kat->deskripsi ? $kat->deskripsi : '-'; ?></td>
                                         <td><span class="badge bg-blue"><?php echo $kat->total_arsip; ?></span></td>
                                         <td><span class="badge bg-green"><?php echo isset($kat->total_sub) ? $kat->total_sub : 0; ?></span></td>
                                         <td>
@@ -104,6 +116,10 @@
                 <div class="fa fa-folder"></div> Tambah Kategori
             </div>
 
+            <?php 
+            // Hanya tampilkan tombol arsip jika bukan kategori parent (ada parent_id)
+            if(isset($kategori_parent_id) && !empty($kategori_parent_id)): 
+            ?>
             <!-- Tombol Tambah Arsip -->
             <div class="btn btn-danger" data-toggle="modal" data-target="#tambahData">
                 <div class="fa fa-plus"></div> Tambah Arsip
@@ -118,6 +134,7 @@
             <a href="<?php echo base_url('admin/arsip/export_excel/' . $kategori_id); ?>" class="btn btn-success">
                 <div class="fa fa-download"></div> Export Excel
             </a>
+            <?php endif; ?>
 
             <!-- Tabel Daftar Sub-Kategori -->
             <?php if(isset($sub_kategori) && !empty($sub_kategori)): ?>
@@ -132,7 +149,6 @@
                                 <tr>
                                     <th width="5px">No</th>
                                     <th>Nama Sub-Kategori</th>
-                                    <th>Deskripsi</th>
                                     <th>Total Arsip</th>
                                     <th>Action</th>
                                 </tr>
@@ -145,7 +161,6 @@
                                     <tr>
                                         <td><?php echo $no_sub++; ?></td>
                                         <td><strong><?php echo $sub->nama; ?></strong></td>
-                                        <td><?php echo $sub->deskripsi ? $sub->deskripsi : '-'; ?></td>
                                         <td><span class="badge bg-blue"><?php echo $sub->total_arsip; ?></span></td>
                                         <td>
                                             <!-- Tombol Lihat Daftar Arsip -->
@@ -170,7 +185,8 @@
             </div>
             <?php endif; ?>
 
-            <!-- Tabel Daftar Arsip -->
+            <!-- Tabel Daftar Arsip (hanya tampil jika bukan kategori parent) -->
+            <?php if(isset($kategori_parent_id) && !empty($kategori_parent_id)): ?>
             <div class="box box-danger" style="margin-top: 15px">
                 <div class="box-header">
                     <h3 class="box-title">Daftar Arsip: <?php echo isset($kategori_nama) ? $kategori_nama : ''; ?></h3>
@@ -265,6 +281,7 @@
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
         <?php endif; ?>
       
     </section>
@@ -286,10 +303,6 @@
             <div class="form-group">
                 <label>Nama Kategori</label>
                 <input type="text" class="form-control" name="nama" placeholder="Nama Kategori" required>
-            </div>
-            <div class="form-group">
-                <label>Deskripsi</label>
-                <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Kategori" rows="3"></textarea>
             </div>
           </div>
           <div class="modal-footer">
@@ -320,10 +333,6 @@
             <div class="form-group">
                 <label>Nama Sub-Kategori</label>
                 <input type="text" class="form-control" name="nama" placeholder="Nama Sub-Kategori" required>
-            </div>
-            <div class="form-group">
-                <label>Deskripsi</label>
-                <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Sub-Kategori" rows="3"></textarea>
             </div>
           </div>
           <div class="modal-footer">
@@ -369,7 +378,7 @@
             </div>
             <div class="form-group">
                 <label>INDEKS/PEKERJAAN</label>
-                <input type="text" class="form-control" name="indeks_pekerjaan" placeholder="Indeks/Pekerjaan">
+                <input type="text" class="form-control" name="indeks_pekerjaan" placeholder="Indeks/Pekerjaan" value="Satker Balai Penilaian Kompetensi">
             </div>
             <div class="form-group">
                 <label>URAIAN MASALAH/KEGIATAN</label>
@@ -462,10 +471,6 @@
                         <input type="hidden" name="id" value="<?php echo $kat->id; ?>">
                         <input type="text" class="form-control" name="nama" placeholder="Nama Kategori" value="<?php echo $kat->nama; ?>" required>
                     </div>
-                    <div class="form-group">
-                        <label>Deskripsi</label>
-                        <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Kategori" rows="3"><?php echo $kat->deskripsi; ?></textarea>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="reset" class="btn btn-danger"><div class="fa fa-trash"></div> Reset</button>
@@ -497,10 +502,6 @@
                         <input type="hidden" name="current_kategori_id" value="<?php echo $kategori_id; ?>">
                         <?php endif; ?>
                         <input type="text" class="form-control" name="nama" placeholder="Nama Sub-Kategori" value="<?php echo $sub->nama; ?>" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Deskripsi</label>
-                        <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Sub-Kategori" rows="3"><?php echo $sub->deskripsi; ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -563,7 +564,7 @@
                     </div>
                     <div class="form-group">
                         <label>INDEKS/PEKERJAAN</label>
-                        <input type="text" class="form-control" name="indeks_pekerjaan" value="<?php echo isset($ars->indeks_pekerjaan) ? $ars->indeks_pekerjaan : ''; ?>">
+                        <input type="text" class="form-control" name="indeks_pekerjaan" value="<?php echo isset($ars->indeks_pekerjaan) && !empty($ars->indeks_pekerjaan) ? $ars->indeks_pekerjaan : 'Satker Balai Penilaian Kompetensi'; ?>">
                     </div>
                     <div class="form-group">
                         <label>URAIAN MASALAH/KEGIATAN</label>
@@ -668,10 +669,6 @@
                         <input type="hidden" name="current_kategori_id" value="<?php echo $kategori_id; ?>">
                         <?php endif; ?>
                         <input type="text" class="form-control" name="nama" placeholder="Nama Sub-Kategori" value="<?php echo $sub->nama; ?>" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Deskripsi</label>
-                        <textarea class="form-control" name="deskripsi" placeholder="Deskripsi Sub-Kategori" rows="3"><?php echo $sub->deskripsi; ?></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
