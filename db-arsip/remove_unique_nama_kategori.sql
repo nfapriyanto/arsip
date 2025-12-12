@@ -10,3 +10,4 @@ DROP INDEX `unique_nama`;
 -- Catatan: Setelah migration ini, field nama tidak lagi unique
 -- Kategori dengan nama yang sama diperbolehkan (misalnya sub-kategori dengan nama serupa)
 
+

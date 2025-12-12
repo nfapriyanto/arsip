@@ -212,6 +212,158 @@ class Arsip extends CI_Controller {
         }
     }
 
+    public function bulk_upload()
+    {
+        date_default_timezone_set('Asia/Jakarta');
+        
+        // Kategori diambil dari form
+        $kategori_id                = $this->input->post('kategori_id');
+        $no_urut                    = $this->input->post('no_urut');
+        $kode                       = $this->input->post('kode');
+        $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan');
+        $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan');
+        $tahun                      = $this->input->post('tahun');
+        $jumlah_berkas              = $this->input->post('jumlah_berkas');
+        $asli_kopi                  = $this->input->post('asli_kopi');
+        $box                        = $this->input->post('box');
+        $klasifikasi_keamanan       = $this->input->post('klasifikasi_keamanan');
+        $createDate                 = date('Y-m-d H:i:s');
+        
+        // Validasi kategori
+        if(empty($kategori_id)) {
+            $this->session->set_flashdata('pesan', 'Kategori tidak valid!');
+            redirect('admin/arsip');
+            return;
+        }
+        
+        // Validasi file
+        if(empty($_FILES['files_arsip']['name'][0])) {
+            $this->session->set_flashdata('pesan', 'Pilih minimal 1 file untuk diupload!');
+            redirect('admin/arsip/kategori/' . $kategori_id);
+            return;
+        }
+        
+        // Ambil nama user dari session
+        $user_id = $this->session->userdata('id');
+        $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
+        $nama_pengisi = $user ? $user->nama : NULL;
+        
+        // Default values
+        if(empty($jumlah_berkas)) {
+            $jumlah_berkas = 1;
+        }
+        if(empty($indeks_pekerjaan)) {
+            $indeks_pekerjaan = 'Satker Balai Penilaian Kompetensi';
+        }
+        
+        // Konfigurasi upload
+        $config['upload_path'] = './uploads/arsip/';
+        $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
+        $config['max_size'] = 10240; // 10MB
+        $config['encrypt_name'] = TRUE;
+        
+        // Buat folder jika belum ada
+        if(!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, TRUE);
+        }
+        
+        $success_count = 0;
+        $error_count = 0;
+        $errors = array();
+        $start_no_urut = !empty($no_urut) ? intval($no_urut) : null;
+        $current_no_urut = $start_no_urut;
+        
+        // Proses setiap file
+        $files = $_FILES['files_arsip'];
+        $file_count = count($files['name']);
+        
+        for($i = 0; $i < $file_count; $i++) {
+            if($files['error'][$i] !== UPLOAD_ERR_OK) {
+                $errors[] = "File " . ($i + 1) . ": Error upload (" . $files['name'][$i] . ")";
+                $error_count++;
+                continue;
+            }
+            
+            // Setup file untuk upload
+            $_FILES['file_arsip']['name'] = $files['name'][$i];
+            $_FILES['file_arsip']['type'] = $files['type'][$i];
+            $_FILES['file_arsip']['tmp_name'] = $files['tmp_name'][$i];
+            $_FILES['file_arsip']['error'] = $files['error'][$i];
+            $_FILES['file_arsip']['size'] = $files['size'][$i];
+            
+            // Initialize upload
+            $this->upload->initialize($config);
+            
+            if($this->upload->do_upload('file_arsip')) {
+                $upload_data = $this->upload->data();
+                
+                // Generate no_berkas otomatis
+                $no_berkas = $this->generateNoBerkas($kategori_id);
+                
+                // Set no_urut jika ada
+                $final_no_urut = null;
+                if($current_no_urut !== null) {
+                    $final_no_urut = $current_no_urut;
+                    $current_no_urut++;
+                }
+                
+                // Siapkan data untuk insert
+                $data = array(
+                    'kategori_id'            => $kategori_id,
+                    'no_berkas'              => $no_berkas,
+                    'no_urut'                => $final_no_urut,
+                    'kode'                   => $kode ?: NULL,
+                    'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
+                    'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
+                    'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,
+                    'jumlah_berkas'          => intval($jumlah_berkas),
+                    'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
+                    'box'                    => $box ?: NULL,
+                    'klasifikasi_keamanan'   => $klasifikasi_keamanan ?: NULL,
+                    'nama_pengisi'           => $nama_pengisi,
+                    'link_drive'             => NULL,
+                    'nama_file'              => $upload_data['file_name'],
+                    'path_file'              => $config['upload_path'] . $upload_data['file_name'],
+                    'ukuran_file'            => $upload_data['file_size'],
+                    'tipe_file'              => $upload_data['file_type'],
+                    'createDate'             => $createDate,
+                    'created_by'             => $user_id
+                );
+                
+                // Insert data
+                try {
+                    $this->m_model->insert($data, 'tb_arsip');
+                    $arsip_id = $this->db->insert_id();
+                    
+                    // Log aksi upload
+                    $this->logAksi($arsip_id, 'Upload', 'Arsip diupload via bulk upload');
+                    
+                    $success_count++;
+                } catch(Exception $e) {
+                    // Hapus file yang sudah terupload jika insert gagal
+                    @unlink($config['upload_path'] . $upload_data['file_name']);
+                    $errors[] = "File " . ($i + 1) . " (" . $files['name'][$i] . "): " . $e->getMessage();
+                    $error_count++;
+                }
+            } else {
+                $error = $this->upload->display_errors();
+                $errors[] = "File " . ($i + 1) . " (" . $files['name'][$i] . "): " . $error;
+                $error_count++;
+            }
+        }
+        
+        // Set pesan hasil
+        $pesan = "Bulk upload selesai! Berhasil: $success_count, Gagal: $error_count";
+        if(!empty($errors) && count($errors) <= 10) {
+            $pesan .= "<br>Error detail:<br>" . implode("<br>", $errors);
+        } elseif(!empty($errors)) {
+            $pesan .= "<br>Ada " . count($errors) . " error. Silakan cek log untuk detail.";
+        }
+        
+        $this->session->set_flashdata('pesan', $pesan);
+        redirect('admin/arsip/kategori/' . $kategori_id);
+    }
+    
     public function insert()
     {
         date_default_timezone_set('Asia/Jakarta');
@@ -1169,6 +1321,254 @@ class Arsip extends CI_Controller {
         $bytes /= pow(1024, $pow);
         
         return round($bytes, $precision) . ' ' . $units[$pow];
+    }
+    
+    public function gallery()
+    {
+        $data['title'] = 'Gallery Arsip';
+        
+        // Ambil semua arsip dengan kategori
+        $this->db->select('a.*, k.nama as kategori_nama');
+        $this->db->from('tb_arsip a');
+        $this->db->join('tb_kategori_arsip k', 'k.id = a.kategori_id', 'left');
+        $this->db->order_by('a.createDate', 'DESC');
+        
+        // Filter berdasarkan kategori jika ada
+        $kategori_id = $this->input->get('kategori_id');
+        if(!empty($kategori_id) && is_numeric($kategori_id)) {
+            $this->db->where('a.kategori_id', $kategori_id);
+        }
+        
+        // Search
+        $search = $this->input->get('search');
+        if(!empty($search)) {
+            $this->db->group_start();
+            $this->db->like('a.no_berkas', $search);
+            $this->db->or_like('a.uraian_masalah_kegiatan', $search);
+            $this->db->or_like('k.nama', $search);
+            $this->db->group_end();
+        }
+        
+        $data['arsip'] = $this->db->get()->result();
+        
+        // Ambil semua kategori untuk filter
+        $this->db->order_by('nama', 'ASC');
+        $data['list_kategori'] = $this->db->get('tb_kategori_arsip')->result();
+        $data['selected_kategori'] = $kategori_id;
+        $data['search_query'] = $search;
+        
+        $this->load->view('admin/templates/header', $data);
+        $this->load->view('admin/templates/sidebar');
+        $this->load->view('admin/gallery_arsip', $data);
+        $this->load->view('admin/templates/footer');
+    }
+    
+    public function thumbnail($id)
+    {
+        $where = array('id' => $id);
+        $arsip = $this->m_model->get_where($where, 'tb_arsip')->row();
+        
+        if(!$arsip) {
+            $this->servePlaceholder();
+            return;
+        }
+        
+        // Path thumbnail
+        $thumbnail_dir = './uploads/thumbnails/';
+        if(!is_dir($thumbnail_dir)) {
+            mkdir($thumbnail_dir, 0777, TRUE);
+        }
+        
+        $thumbnail_path = $thumbnail_dir . 'thumb_' . $id . '.jpg';
+        
+        // Jika thumbnail sudah ada dan file sumber ada, cek apakah perlu regenerate
+        if(file_exists($thumbnail_path)) {
+            // Jika file sumber tidak ada atau thumbnail lebih baru, gunakan thumbnail yang ada
+            if(!file_exists($arsip->path_file) || filemtime($thumbnail_path) >= filemtime($arsip->path_file)) {
+                header('Content-Type: image/jpeg');
+                readfile($thumbnail_path);
+                return;
+            }
+        }
+        
+        // Jika file sumber tidak ada, tampilkan placeholder
+        if(!file_exists($arsip->path_file)) {
+            $this->servePlaceholder();
+            return;
+        }
+        
+        // Generate thumbnail
+        $image_types = array('image/jpeg', 'image/jpg', 'image/png', 'image/gif');
+        
+        if(in_array($arsip->tipe_file, $image_types)) {
+            // Jika sudah gambar, resize saja
+            $this->load->library('image_lib');
+            
+            $config['image_library'] = 'gd2';
+            $config['source_image'] = $arsip->path_file;
+            $config['new_image'] = $thumbnail_path;
+            $config['create_thumb'] = FALSE;
+            $config['maintain_ratio'] = TRUE;
+            $config['width'] = 300;
+            $config['height'] = 400;
+            $config['quality'] = 85;
+            
+            $this->image_lib->initialize($config);
+            
+            if($this->image_lib->resize()) {
+                header('Content-Type: image/jpeg');
+                readfile($thumbnail_path);
+            } else {
+                // Fallback ke placeholder
+                $this->servePlaceholder();
+            }
+            $this->image_lib->clear();
+        } elseif($arsip->tipe_file == 'application/pdf') {
+            // Convert PDF halaman pertama ke gambar
+            if($this->generatePdfThumbnail($arsip->path_file, $thumbnail_path)) {
+                header('Content-Type: image/jpeg');
+                readfile($thumbnail_path);
+            } else {
+                $this->servePlaceholder();
+            }
+        } else {
+            // File lain, tampilkan placeholder
+            $this->servePlaceholder();
+        }
+    }
+    
+    private function generatePdfThumbnail($pdf_path, $thumbnail_path)
+    {
+        // Coba beberapa metode untuk convert PDF ke gambar
+        
+        // Method 1: Menggunakan Ghostscript (gs) - paling umum
+        $gs_paths = array(
+            'gs', // Jika ada di PATH
+            'C:\\Program Files\\gs\\gs10.00.0\\bin\\gswin64c.exe',
+            'C:\\Program Files\\gs\\gs10.00.0\\bin\\gswin32c.exe',
+            'C:\\Program Files (x86)\\gs\\gs10.00.0\\bin\\gswin64c.exe',
+            'C:\\Program Files (x86)\\gs\\gs10.00.0\\bin\\gswin32c.exe',
+            'C:\\xampp\\gs\\bin\\gswin64c.exe',
+            'C:\\xampp\\gs\\bin\\gswin32c.exe',
+        );
+        
+        $gs_command = null;
+        foreach($gs_paths as $gs_path) {
+            if($this->commandExists($gs_path)) {
+                $gs_command = $gs_path;
+                break;
+            }
+        }
+        
+        if($gs_command) {
+            // Gunakan Ghostscript untuk convert PDF ke JPEG
+            $command = escapeshellarg($gs_command) . ' -dNOPAUSE -dBATCH -sDEVICE=jpeg -dFirstPage=1 -dLastPage=1 -r150 -dJPEGQ=85 -sOutputFile=' . escapeshellarg($thumbnail_path) . ' ' . escapeshellarg($pdf_path) . ' 2>&1';
+            exec($command, $output, $return_var);
+            
+            if($return_var === 0 && file_exists($thumbnail_path)) {
+                // Resize thumbnail jika terlalu besar
+                $this->resizeThumbnail($thumbnail_path, 300, 400);
+                return true;
+            }
+        }
+        
+        // Method 2: Menggunakan pdftoppm (poppler-utils)
+        $pdftoppm_paths = array(
+            'pdftoppm', // Jika ada di PATH
+            'C:\\Program Files\\poppler\\bin\\pdftoppm.exe',
+            'C:\\Program Files (x86)\\poppler\\bin\\pdftoppm.exe',
+            'C:\\xampp\\poppler\\bin\\pdftoppm.exe',
+        );
+        
+        $pdftoppm_command = null;
+        foreach($pdftoppm_paths as $pdftoppm_path) {
+            if($this->commandExists($pdftoppm_path)) {
+                $pdftoppm_command = $pdftoppm_path;
+                break;
+            }
+        }
+        
+        if($pdftoppm_command) {
+            $temp_prefix = dirname($thumbnail_path) . '/temp_' . uniqid();
+            $command = escapeshellarg($pdftoppm_command) . ' -jpeg -f 1 -l 1 -r 150 -singlefile ' . escapeshellarg($pdf_path) . ' ' . escapeshellarg($temp_prefix) . ' 2>&1';
+            exec($command, $output, $return_var);
+            
+            // Cari file output yang dihasilkan (pdftoppm menambahkan -1.jpg di akhir)
+            $temp_file = $temp_prefix . '-1.jpg';
+            if(file_exists($temp_file)) {
+                rename($temp_file, $thumbnail_path);
+                $this->resizeThumbnail($thumbnail_path, 300, 400);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private function commandExists($command)
+    {
+        $whereIsCommand = (PHP_OS == 'WINNT') ? 'where' : 'which';
+        $process = proc_open(
+            "$whereIsCommand " . escapeshellarg($command),
+            array(
+                0 => array("pipe", "r"),
+                1 => array("pipe", "w"),
+                2 => array("pipe", "w"),
+            ),
+            $pipes
+        );
+        
+        if($process !== false) {
+            $stdout = stream_get_contents($pipes[1]);
+            $returnCode = proc_close($process);
+            return $returnCode === 0 && !empty($stdout);
+        }
+        
+        return false;
+    }
+    
+    private function resizeThumbnail($image_path, $max_width = 300, $max_height = 400)
+    {
+        $this->load->library('image_lib');
+        
+        $config['image_library'] = 'gd2';
+        $config['source_image'] = $image_path;
+        $config['create_thumb'] = FALSE;
+        $config['maintain_ratio'] = TRUE;
+        $config['width'] = $max_width;
+        $config['height'] = $max_height;
+        $config['quality'] = 85;
+        
+        $this->image_lib->initialize($config);
+        $this->image_lib->resize();
+        $this->image_lib->clear();
+    }
+    
+    private function servePlaceholder()
+    {
+        // Generate placeholder image
+        $width = 300;
+        $height = 400;
+        
+        $img = imagecreatetruecolor($width, $height);
+        $bg_color = imagecolorallocate($img, 240, 240, 240);
+        $text_color = imagecolorallocate($img, 150, 150, 150);
+        
+        imagefill($img, 0, 0, $bg_color);
+        
+        // Tambahkan ikon file
+        $text = 'No Preview';
+        $font_size = 5;
+        $text_width = imagefontwidth($font_size) * strlen($text);
+        $text_height = imagefontheight($font_size);
+        $x = ($width - $text_width) / 2;
+        $y = ($height - $text_height) / 2;
+        
+        imagestring($img, $font_size, $x, $y, $text, $text_color);
+        
+        header('Content-Type: image/jpeg');
+        imagejpeg($img, null, 85);
+        imagedestroy($img);
     }
 }
 

@@ -39,3 +39,4 @@ Pastikan kolom `deskripsi` sudah tidak ada dalam daftar kolom.
 - Backup database sebelum menjalankan migration ini
 - Setelah migration, form kategori tidak akan memiliki field deskripsi lagi
 
+

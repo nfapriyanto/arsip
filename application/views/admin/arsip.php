@@ -124,6 +124,11 @@
             <div class="btn btn-danger" data-toggle="modal" data-target="#tambahData">
                 <div class="fa fa-plus"></div> Tambah Arsip
             </div>
+            
+            <!-- Tombol Bulk Upload -->
+            <div class="btn btn-success" data-toggle="modal" data-target="#bulkUploadModal">
+                <div class="fa fa-upload"></div> Bulk Upload
+            </div>
 
             <!-- Tombol Import Excel -->
             <div class="btn btn-info" data-toggle="modal" data-target="#importExcel">
@@ -447,6 +452,110 @@
           <div class="modal-footer">
             <button type="reset" class="btn btn-danger"><div class="fa fa-trash"></div> Reset</button>
             <button type="submit" class="btn btn-primary"><div class="fa fa-save"></div> Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal Bulk Upload -->
+  <div class="modal fade" id="bulkUploadModal" tabindex="-1" role="dialog" aria-labelledby="bulkUploadModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="bulkUploadModalLabel"><div class="fa fa-upload"></div> Bulk Upload Arsip</h4>
+        </div>
+        <form action="<?php echo base_url('admin/arsip/bulk_upload') ?>" method="POST" enctype="multipart/form-data" id="formBulkUpload">
+          <div class="modal-body">
+            <!-- Kategori tidak bisa dipilih, langsung dari kategori yang sedang dibuka -->
+            <input type="hidden" name="kategori_id" value="<?php echo isset($kategori_id) ? $kategori_id : ''; ?>">
+            
+            <div class="alert alert-info">
+              <i class="fa fa-info-circle"></i> <strong>Petunjuk:</strong><br>
+              - Pilih multiple file sekaligus untuk diupload<br>
+              - Semua file akan menggunakan data yang sama di bawah<br>
+              - No Berkas akan digenerate otomatis untuk setiap file<br>
+              - Format file: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR (Max: 10MB per file)
+            </div>
+            
+            <div class="form-group">
+                <label>Kategori</label>
+                <input type="text" class="form-control" value="<?php echo isset($kategori_nama) ? $kategori_nama : ''; ?>" readonly>
+                <small class="text-muted">Arsip akan dibuat di kategori ini</small>
+            </div>
+            
+            <div class="form-group">
+                <label>File Arsip (Multiple) <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="files_arsip" name="files_arsip[]" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar" multiple required>
+                <small class="text-muted">Pilih multiple file dengan menahan Ctrl (Windows) atau Cmd (Mac) saat klik</small>
+                <div id="file-list" style="margin-top: 10px;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>NO URUT (Opsional)</label>
+                <input type="number" class="form-control" name="no_urut" placeholder="Nomor Urut" min="1">
+                <small class="text-muted">Jika diisi, akan digunakan untuk semua file (akan increment otomatis)</small>
+            </div>
+            
+            <div class="form-group">
+                <label>KODE</label>
+                <input type="text" class="form-control" name="kode" placeholder="Kode Arsip">
+            </div>
+            
+            <div class="form-group">
+                <label>INDEKS/PEKERJAAN</label>
+                <input type="text" class="form-control" name="indeks_pekerjaan" placeholder="Indeks/Pekerjaan" value="Satker Balai Penilaian Kompetensi">
+            </div>
+            
+            <div class="form-group">
+                <label>URAIAN MASALAH/KEGIATAN</label>
+                <textarea class="form-control" name="uraian_masalah_kegiatan" placeholder="Uraian Masalah/Kegiatan" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>TAHUN</label>
+                <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>">
+            </div>
+            
+            <div class="form-group">
+                <label>JUMLAH BERKAS</label>
+                <input type="number" class="form-control" name="jumlah_berkas" placeholder="Jumlah Berkas" min="1" value="1">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>ASLI/KOPI</label>
+                        <select class="form-control" name="asli_kopi">
+                            <option value="">-- Pilih --</option>
+                            <option value="Asli">Asli</option>
+                            <option value="Kopi">Kopi</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>BOX</label>
+                        <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>KLASIFIKASI KEAMANAN DAN AKSES ARSIP DINAMIS</label>
+                <select class="form-control" name="klasifikasi_keamanan">
+                    <option value="">-- Pilih Klasifikasi --</option>
+                    <option value="Umum">Umum</option>
+                    <option value="Terbatas">Terbatas</option>
+                    <option value="Rahasia">Rahasia</option>
+                    <option value="Sangat Rahasia">Sangat Rahasia</option>
+                </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><div class="fa fa-times"></div> Batal</button>
+            <button type="submit" class="btn btn-success" id="btn-bulk-upload"><div class="fa fa-upload"></div> Upload Semua</button>
           </div>
         </form>
       </div>
@@ -838,4 +947,49 @@ function validateFileOrLink() {
     }
     return true;
 }
+    // Bulk Upload - Tampilkan daftar file yang dipilih
+    $('#files_arsip').on('change', function() {
+        var files = this.files;
+        var fileList = $('#file-list');
+        fileList.empty();
+        
+        if(files.length > 0) {
+            var html = '<div class="alert alert-success"><strong>File yang dipilih (' + files.length + ' file):</strong><ul style="margin-bottom: 0; padding-left: 20px;">';
+            for(var i = 0; i < files.length; i++) {
+                var fileSize = (files[i].size / 1024 / 1024).toFixed(2);
+                html += '<li>' + files[i].name + ' (' + fileSize + ' MB)</li>';
+            }
+            html += '</ul></div>';
+            fileList.html(html);
+        }
+    });
+    
+    // Bulk Upload - Validasi sebelum submit
+    $('#formBulkUpload').on('submit', function(e) {
+        var files = $('#files_arsip')[0].files;
+        if(files.length === 0) {
+            e.preventDefault();
+            alert('Pilih minimal 1 file untuk diupload!');
+            return false;
+        }
+        
+        // Validasi ukuran file
+        var maxSize = 10 * 1024 * 1024; // 10MB
+        var invalidFiles = [];
+        for(var i = 0; i < files.length; i++) {
+            if(files[i].size > maxSize) {
+                invalidFiles.push(files[i].name);
+            }
+        }
+        
+        if(invalidFiles.length > 0) {
+            e.preventDefault();
+            alert('File berikut melebihi ukuran maksimal 10MB:\n' + invalidFiles.join('\n'));
+            return false;
+        }
+        
+        // Tampilkan loading
+        $('#btn-bulk-upload').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Uploading...');
+    });
+});
 </script> 

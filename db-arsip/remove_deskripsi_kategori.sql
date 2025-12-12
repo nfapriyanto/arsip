@@ -6,3 +6,4 @@
 ALTER TABLE `tb_kategori_arsip` 
 DROP COLUMN `deskripsi`;
 
+

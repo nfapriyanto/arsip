@@ -40,3 +40,4 @@ Pastikan index `unique_nama` sudah tidak ada dalam daftar.
 - Ini berguna untuk kategori bertingkat di mana sub-kategori dari parent berbeda bisa memiliki nama serupa
 - Pastikan aplikasi sudah siap untuk menangani kategori dengan nama duplikat
 
+

@@ -40,7 +40,7 @@ class Dashboard extends CI_Controller {
         $data['selectedParentId'] = $parent_id;
         
         // Ambil statistik sub-kategori berdasarkan parent_id yang dipilih
-        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as jumlah_arsip');
+        $this->db->select('k.id, k.nama, k.parent_id, COUNT(DISTINCT a.id) as jumlah_arsip');
         $this->db->from('tb_kategori_arsip k');
         $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
         $this->db->where('k.parent_id IS NOT NULL');
@@ -50,7 +50,7 @@ class Dashboard extends CI_Controller {
             $this->db->where('k.parent_id', $parent_id);
         }
         
-        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
+        $this->db->group_by('k.id, k.nama, k.parent_id');
         $this->db->order_by('k.nama', 'ASC');
         $data['statistikKategori'] = $this->db->get()->result();
         
@@ -65,7 +65,7 @@ class Dashboard extends CI_Controller {
     {
         $parent_id = $this->input->post('parent_id');
         
-        $this->db->select('k.id, k.nama, k.deskripsi, k.parent_id, COUNT(DISTINCT a.id) as jumlah_arsip');
+        $this->db->select('k.id, k.nama, k.parent_id, COUNT(DISTINCT a.id) as jumlah_arsip');
         $this->db->from('tb_kategori_arsip k');
         $this->db->join('tb_arsip a', 'a.kategori_id = k.id', 'left');
         $this->db->where('k.parent_id IS NOT NULL');
@@ -74,7 +74,7 @@ class Dashboard extends CI_Controller {
             $this->db->where('k.parent_id', $parent_id);
         }
         
-        $this->db->group_by('k.id, k.nama, k.deskripsi, k.parent_id');
+        $this->db->group_by('k.id, k.nama, k.parent_id');
         $this->db->order_by('k.nama', 'ASC');
         $result = $this->db->get()->result();
         
