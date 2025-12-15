@@ -46,3 +46,4 @@ ADD CONSTRAINT `fk_arsip_kode` FOREIGN KEY (`kode_id`) REFERENCES `tb_kode_arsip
 -- Jangan dijalankan dulu, biarkan untuk backup
 -- ALTER TABLE `tb_arsip` DROP COLUMN `kode`;
 
+
