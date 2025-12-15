@@ -226,7 +226,18 @@
                                         <td><?php echo $no++; ?></td>
                                         <td><strong><?php echo $ars->no_berkas ? $ars->no_berkas : '-'; ?></strong></td>
                                         <td><?php echo $ars->no_urut ? $ars->no_urut : '-'; ?></td>
-                                        <td><?php echo $ars->kode ? $ars->kode : '-'; ?></td>
+                                        <td>
+                                        <?php 
+                                        if(isset($ars->kode_arsip) && !empty($ars->kode_arsip)) {
+                                            echo $ars->kode_arsip;
+                                            if(isset($ars->kode_nama) && !empty($ars->kode_nama)) {
+                                                echo '<br><small class="text-muted">' . $ars->kode_nama . '</small>';
+                                            }
+                                        } else {
+                                            echo '-';
+                                        }
+                                        ?>
+                                    </td>
                                         <td><?php echo $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-'; ?></td>
                                         <td><?php echo $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-'; ?></td>
                                         <td><?php echo $ars->tahun ? $ars->tahun : '-'; ?></td>
@@ -379,7 +390,15 @@
             </div>
             <div class="form-group">
                 <label>KODE</label>
-                <input type="text" class="form-control" name="kode" placeholder="Kode Arsip">
+                <select class="form-control" name="kode_id" id="kode_select">
+                    <option value="">-- Pilih Kode --</option>
+                    <?php if(isset($list_kode) && !empty($list_kode)): ?>
+                        <?php foreach($list_kode as $kod): ?>
+                            <option value="<?php echo $kod->id; ?>"><?php echo $kod->kode . ' – ' . $kod->nama; ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+                <small class="text-muted">Jika kode tidak ada, <a href="<?php echo base_url('admin/kode'); ?>" target="_blank">tambahkan kode baru</a></small>
             </div>
             <div class="form-group">
                 <label>INDEKS/PEKERJAAN</label>
@@ -500,7 +519,15 @@
             
             <div class="form-group">
                 <label>KODE</label>
-                <input type="text" class="form-control" name="kode" placeholder="Kode Arsip">
+                <select class="form-control" name="kode_id" id="kode_select_bulk">
+                    <option value="">-- Pilih Kode --</option>
+                    <?php if(isset($list_kode) && !empty($list_kode)): ?>
+                        <?php foreach($list_kode as $kod): ?>
+                            <option value="<?php echo $kod->id; ?>"><?php echo $kod->kode . ' – ' . $kod->nama; ?></option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+                <small class="text-muted">Jika kode tidak ada, <a href="<?php echo base_url('admin/kode'); ?>" target="_blank">tambahkan kode baru</a></small>
             </div>
             
             <div class="form-group">
@@ -669,7 +696,17 @@
                     </div>
                     <div class="form-group">
                         <label>KODE</label>
-                        <input type="text" class="form-control" name="kode" value="<?php echo isset($ars->kode) ? $ars->kode : ''; ?>">
+                        <select class="form-control" name="kode_id" id="kode_select_edit<?php echo $ars->id; ?>">
+                            <option value="">-- Pilih Kode --</option>
+                            <?php if(isset($list_kode) && !empty($list_kode)): ?>
+                                <?php foreach($list_kode as $kod): ?>
+                                    <option value="<?php echo $kod->id; ?>" <?php echo (isset($ars->kode_id) && $ars->kode_id == $kod->id) ? 'selected' : ''; ?>>
+                                        <?php echo $kod->kode . ' – ' . $kod->nama; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <small class="text-muted">Jika kode tidak ada, <a href="<?php echo base_url('admin/kode'); ?>" target="_blank">tambahkan kode baru</a></small>
                     </div>
                     <div class="form-group">
                         <label>INDEKS/PEKERJAAN</label>

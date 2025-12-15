@@ -37,6 +37,10 @@ class Arsip extends CI_Controller {
         $this->db->order_by('nama', 'ASC');
         $data['list_kategori'] = $this->db->get('tb_kategori_arsip')->result();
         
+        // Ambil semua kode arsip untuk dropdown
+        $this->db->order_by('kode', 'ASC');
+        $data['list_kode'] = $this->db->get('tb_kode_arsip')->result();
+        
         $this->load->view('admin/templates/header', $data);
         $this->load->view('admin/templates/sidebar');
         $this->load->view('admin/arsip', $data);
@@ -62,8 +66,9 @@ class Arsip extends CI_Controller {
         $data['title'] = 'Daftar Arsip: ' . $kategori->nama;
         
         // Ambil semua arsip dengan kategori_id yang sama (termasuk sub-kategori)
-        $this->db->select('a.*');
+        $this->db->select('a.*, k.kode as kode_arsip, k.nama as kode_nama');
         $this->db->from('tb_arsip a');
+        $this->db->join('tb_kode_arsip k', 'k.id = a.kode_id', 'left');
         $this->db->where('a.kategori_id', $id);
         $this->db->order_by('a.createDate', 'DESC');
         $arsip = $this->db->get()->result();
@@ -98,6 +103,10 @@ class Arsip extends CI_Controller {
         $this->db->where('parent_id IS NULL');
         $this->db->order_by('nama', 'ASC');
         $data['list_kategori_parent'] = $this->db->get('tb_kategori_arsip')->result();
+        
+        // Ambil semua kode arsip untuk dropdown
+        $this->db->order_by('kode', 'ASC');
+        $data['list_kode'] = $this->db->get('tb_kode_arsip')->result();
         
         $this->load->view('admin/templates/header', $data);
         $this->load->view('admin/templates/sidebar');
@@ -219,7 +228,7 @@ class Arsip extends CI_Controller {
         // Kategori diambil dari form
         $kategori_id                = $this->input->post('kategori_id');
         $no_urut                    = $this->input->post('no_urut');
-        $kode                       = $this->input->post('kode');
+        $kode_id                    = $this->input->post('kode_id');
         $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan');
         $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan');
         $tahun                      = $this->input->post('tahun');
@@ -312,7 +321,7 @@ class Arsip extends CI_Controller {
                     'kategori_id'            => $kategori_id,
                     'no_berkas'              => $no_berkas,
                     'no_urut'                => $final_no_urut,
-                    'kode'                   => $kode ?: NULL,
+                    'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
                     'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,
@@ -372,7 +381,7 @@ class Arsip extends CI_Controller {
         $kategori_id                = $this->input->post('kategori_id');
         $no_berkas                  = $this->input->post('no_berkas');
         $no_urut                    = $this->input->post('no_urut');
-        $kode                       = $this->input->post('kode');
+        $kode_id                    = $this->input->post('kode_id');
         $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan');
         $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan');
         $tahun                      = $this->input->post('tahun');
@@ -594,7 +603,7 @@ class Arsip extends CI_Controller {
         $kategori_id             = $this->input->post('kategori_id');
         $no_berkas               = $this->input->post('no_berkas');
         $no_urut                 = $this->input->post('no_urut');
-        $kode                    = $this->input->post('kode');
+        $kode_id                 = $this->input->post('kode_id');
         $indeks_pekerjaan        = $this->input->post('indeks_pekerjaan');
         $uraian_masalah_kegiatan = $this->input->post('uraian_masalah_kegiatan');
         $tahun                   = $this->input->post('tahun');
@@ -621,7 +630,7 @@ class Arsip extends CI_Controller {
             'kategori_id'            => $kategori_id,
             'no_berkas'              => $no_berkas,
             'no_urut'                => !empty($no_urut) ? $no_urut : NULL,
-            'kode'                   => $kode,
+            'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
             'indeks_pekerjaan'       => $indeks_pekerjaan,
             'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
             'tahun'                  => !empty($tahun) ? $tahun : NULL,
@@ -811,6 +820,15 @@ class Arsip extends CI_Controller {
                 $klasifikasi_keamanan = isset($row[10]) ? trim($row[10]) : '';
                 $link_drive = isset($row[11]) ? trim($row[11]) : '';
                 
+                // Cari kode_id dari kode yang diinput (jika ada)
+                $kode_id_import = NULL;
+                if(!empty($kode)) {
+                    $kode_check = $this->m_model->get_where(array('kode' => $kode), 'tb_kode_arsip')->row();
+                    if($kode_check) {
+                        $kode_id_import = $kode_check->id;
+                    }
+                }
+                
                 // Validasi kategori (jika kategori_nama diisi, cari ID-nya)
                 $import_kategori_id = $kategori_id; // Default ke kategori yang dipilih
                 if(!empty($kategori_nama)) {
@@ -866,12 +884,21 @@ class Arsip extends CI_Controller {
                     continue;
                 }
                 
+                // Cari kode_id dari kode yang diinput (jika ada)
+                $kode_id_import = NULL;
+                if(!empty($kode)) {
+                    $kode_check = $this->m_model->get_where(array('kode' => $kode), 'tb_kode_arsip')->row();
+                    if($kode_check) {
+                        $kode_id_import = $kode_check->id;
+                    }
+                }
+                
                 // Siapkan data untuk insert
                 $data = array(
                     'kategori_id'            => $import_kategori_id,
                     'no_berkas'              => $no_berkas,
                     'no_urut'                => !empty($no_urut) ? intval($no_urut) : NULL,
-                    'kode'                   => $kode ?: NULL,
+                    'kode_id'                => $kode_id_import,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
                     'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,

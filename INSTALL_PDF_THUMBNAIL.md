@@ -68,3 +68,7 @@ Sistem Gallery Arsip memerlukan tool eksternal untuk mengkonversi halaman pertam
 Jika tidak ingin menginstall tool eksternal, sistem akan tetap berfungsi dengan menampilkan placeholder untuk file PDF. File gambar akan tetap bisa ditampilkan sebagai thumbnail.
 
 
+
+
+
+

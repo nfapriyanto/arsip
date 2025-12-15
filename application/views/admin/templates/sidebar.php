@@ -28,6 +28,12 @@
         </li>
 
         <li class="treeview">
+          <a href="<?php echo base_url('admin/kode') ?>">
+            <i class="fa fa-code"></i> <span>Kode Arsip</span>
+          </a>
+        </li>
+
+        <li class="treeview">
           <a href="<?php echo base_url('admin/arsip/gallery') ?>">
             <i class="fa fa-th-large"></i> <span>Gallery Arsip</span>
           </a>
