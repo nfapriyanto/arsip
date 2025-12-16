@@ -14,14 +14,6 @@
 
     <!-- Main content -->
     <section class="content">
-        <!-- Alert -->
-        <?php 
-        $flash_pesan = $this->session->flashdata('pesan');
-        // Flashdata otomatis dihapus setelah dibaca dengan flashdata()
-        ?>
-        <?php if(!empty($flash_pesan)): ?>
-        <div class="flash-data" data-flashdata="<?php echo htmlspecialchars($flash_pesan, ENT_QUOTES, 'UTF-8') ?>"></div>
-        <?php endif; ?>
 
         <?php if(isset($kategori) && !isset($barang)): ?>
             <!-- TAMPILAN KATEGORI -->

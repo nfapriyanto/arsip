@@ -230,8 +230,8 @@
     });
 </script>
 
-<!-- Sweet Alert -->
-<script src="<?php echo base_url('assets/sweetalert') ?>/sweetalert.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- Raphael.js (required for Morris.js) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
 <!-- Morris.js charts -->
@@ -332,59 +332,65 @@ $(document).ready(function() {
 });
 </script>
 <script>
-    //Notifikasi
-    const flashDataElement = $('.flash-data');
-    if (flashDataElement.length > 0) {
-      const flashData = flashDataElement.data('flashdata');
-      
-      if (flashData && flashData.trim() !== '' && flashData !== null && flashData !== undefined){
-        // Buat key unik berdasarkan URL dan timestamp saat halaman dimuat
-        const currentUrl = window.location.pathname + window.location.search;
-        const pageLoadTime = window.performance ? window.performance.timing.navigationStart : Date.now();
-        const pageFlashKey = 'page_flash_' + currentUrl.replace(/[^a-zA-Z0-9]/g, '_') + '_' + pageLoadTime;
+    //Notifikasi Toast dari Flashdata
+    <?php 
+    $flash_pesan = $this->session->flashdata('pesan');
+    if(!empty($flash_pesan)):
+    ?>
+    $(document).ready(function() {
+        const flashData = <?php echo json_encode($flash_pesan, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         
-        // Cek apakah flashdata ini sudah ditampilkan di halaman ini
-        const alreadyShown = sessionStorage.getItem(pageFlashKey);
-        
-        if (!alreadyShown) {
-          // Tandai bahwa flashdata sudah ditampilkan di halaman ini
-          sessionStorage.setItem(pageFlashKey, '1');
-          
-          swal({
-            title: "Success!",
-            text: flashData,
-            icon: "success",
-            button: "Ok!",
-          }).then(() => {
-            // Hapus elemen flash-data setelah alert ditutup
-            flashDataElement.remove();
-          });
-          
-          // Hapus elemen flash-data dari DOM untuk mencegah muncul lagi
-          flashDataElement.remove();
-        } else {
-          // Jika sudah ditampilkan di halaman ini, hapus elemen saja tanpa menampilkan alert
-          flashDataElement.remove();
+        if (flashData && flashData.trim() !== '' && flashData !== null && flashData !== undefined){
+            // Buat key unik berdasarkan URL dan timestamp saat halaman dimuat
+            const currentUrl = window.location.pathname + window.location.search;
+            const pageLoadTime = window.performance ? window.performance.timing.navigationStart : Date.now();
+            const pageFlashKey = 'page_flash_' + currentUrl.replace(/[^a-zA-Z0-9]/g, '_') + '_' + pageLoadTime;
+            
+            // Cek apakah flashdata ini sudah ditampilkan di halaman ini
+            const alreadyShown = sessionStorage.getItem(pageFlashKey);
+            
+            if (!alreadyShown) {
+                // Tandai bahwa flashdata sudah ditampilkan di halaman ini
+                sessionStorage.setItem(pageFlashKey, '1');
+                
+                // Tampilkan toast notification
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+                
+                Toast.fire({
+                    icon: 'success',
+                    title: flashData
+                });
+            }
         }
-      } else {
-        // Jika tidak ada flashdata yang valid, hapus elemen
-        flashDataElement.remove();
-      }
-    }
+    });
+    <?php endif; ?>
 
     //Konfirmasi
     $('.tombol-yakin').on('click', function (e) {
       e.preventDefault();
       const href = $(this).attr('href');
       const isiData = $(this).data('isidata');
-      swal({
+      Swal.fire({
         title: 'Apakah anda yakin?',
         text: isiData,
         icon: 'warning',
-        buttons: true,
-        dangerMode: true,
-      }).then((willDelete) => {
-          if (willDelete) {
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, lanjutkan!',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+          if (result.isConfirmed) {
             document.location.href = href;
           }
         });
