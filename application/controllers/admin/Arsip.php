@@ -321,7 +321,7 @@ class Arsip extends CI_Controller {
         $config['upload_path'] = './uploads/arsip/';
         $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
         $config['max_size'] = 0; // Tanpa limit
-        $config['encrypt_name'] = TRUE;
+        $config['encrypt_name'] = FALSE;
         
         // Buat folder jika belum ada
         if(!is_dir($config['upload_path'])) {
@@ -491,7 +491,7 @@ class Arsip extends CI_Controller {
             $config['upload_path'] = './uploads/arsip/';
             $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
             $config['max_size'] = 0; // Tanpa limit
-            $config['encrypt_name'] = TRUE;
+            $config['encrypt_name'] = FALSE;
             
             // Buat folder jika belum ada
             if(!is_dir($config['upload_path'])) {
@@ -791,7 +791,7 @@ class Arsip extends CI_Controller {
             $config['upload_path'] = './uploads/arsip/';
             $config['allowed_types'] = 'pdf|doc|docx|xls|xlsx|jpg|jpeg|png|gif|zip|rar';
             $config['max_size'] = 0; // Tanpa limit
-            $config['encrypt_name'] = TRUE;
+            $config['encrypt_name'] = FALSE;
             
             $this->upload->initialize($config);
             
