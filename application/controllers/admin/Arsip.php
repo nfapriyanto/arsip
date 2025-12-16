@@ -95,6 +95,19 @@ class Arsip extends CI_Controller {
             $data['kategori_parent'] = $this->m_model->get_where($where_parent, 'tb_kategori_arsip')->row();
         }
         
+        // Tentukan kategori parent untuk pengecekan kondisi khusus
+        // Jika kategori saat ini adalah parent (parent_id = null), gunakan kategori itu sendiri
+        // Jika kategori saat ini adalah sub-kategori (ada parent_id), gunakan parent-nya
+        $kategori_parent_check = null;
+        if(empty($kategori->parent_id)) {
+            // Kategori saat ini adalah parent
+            $kategori_parent_check = $kategori;
+        } else {
+            // Kategori saat ini adalah sub-kategori, ambil parent-nya
+            $kategori_parent_check = $data['kategori_parent'];
+        }
+        $data['kategori_parent_check'] = $kategori_parent_check;
+        
         // Ambil semua kategori untuk dropdown form (termasuk sub-kategori untuk form arsip)
         $this->db->order_by('nama', 'ASC');
         $data['list_kategori'] = $this->db->get('tb_kategori_arsip')->result();
@@ -355,6 +368,19 @@ class Arsip extends CI_Controller {
                     $current_no_urut++;
                 }
                 
+                // Handle tahun: jika hanya angka (tahun saja), konversi ke format date (YYYY-01-01)
+                $tahun_formatted_bulk = NULL;
+                if(!empty($tahun)) {
+                    // Cek apakah input hanya angka (tahun saja)
+                    if(is_numeric($tahun) && strlen($tahun) == 4) {
+                        // Input hanya tahun, konversi ke tanggal (1 Januari tahun tersebut)
+                        $tahun_formatted_bulk = $tahun . '-01-01';
+                    } else {
+                        // Input sudah format date, gunakan langsung
+                        $tahun_formatted_bulk = date('Y-m-d', strtotime($tahun));
+                    }
+                }
+                
                 // Siapkan data untuk insert
                 $data = array(
                     'kategori_id'            => $kategori_id,
@@ -363,7 +389,7 @@ class Arsip extends CI_Controller {
                     'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
-                    'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
+                    'tahun'                  => $tahun_formatted_bulk,
                     'jumlah_berkas'          => intval($jumlah_berkas),
                     'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
                     'box'                    => $box ?: NULL,
@@ -502,6 +528,19 @@ class Arsip extends CI_Controller {
         if(empty($indeks_pekerjaan)) {
             $indeks_pekerjaan = 'Satker Balai Penilaian Kompetensi';
         }
+        
+        // Handle tahun: jika hanya angka (tahun saja), konversi ke format date (YYYY-01-01)
+        $tahun_formatted = NULL;
+        if(!empty($tahun)) {
+            // Cek apakah input hanya angka (tahun saja)
+            if(is_numeric($tahun) && strlen($tahun) == 4) {
+                // Input hanya tahun, konversi ke tanggal (1 Januari tahun tersebut)
+                $tahun_formatted = $tahun . '-01-01';
+            } else {
+                // Input sudah format date, gunakan langsung
+                $tahun_formatted = date('Y-m-d', strtotime($tahun));
+            }
+        }
 
         $data = array(
             'kategori_id'            => $kategori_id,
@@ -510,7 +549,7 @@ class Arsip extends CI_Controller {
             'kode'                   => $kode,
             'indeks_pekerjaan'       => $indeks_pekerjaan,
             'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
-            'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
+            'tahun'                  => $tahun_formatted,
             'jumlah_berkas'          => $jumlah_berkas,
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
@@ -662,6 +701,19 @@ class Arsip extends CI_Controller {
         if(empty($indeks_pekerjaan)) {
             $indeks_pekerjaan = 'Satker Balai Penilaian Kompetensi';
         }
+        
+        // Handle tahun: jika hanya angka (tahun saja), konversi ke format date (YYYY-01-01)
+        $tahun_formatted = NULL;
+        if(!empty($tahun)) {
+            // Cek apakah input hanya angka (tahun saja)
+            if(is_numeric($tahun) && strlen($tahun) == 4) {
+                // Input hanya tahun, konversi ke tanggal (1 Januari tahun tersebut)
+                $tahun_formatted = $tahun . '-01-01';
+            } else {
+                // Input sudah format date, gunakan langsung
+                $tahun_formatted = date('Y-m-d', strtotime($tahun));
+            }
+        }
 
         $where = array('id' => $id);
         
@@ -672,7 +724,7 @@ class Arsip extends CI_Controller {
             'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
             'indeks_pekerjaan'       => $indeks_pekerjaan,
             'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
-            'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
+            'tahun'                  => $tahun_formatted,
             'jumlah_berkas'          => !empty($jumlah_berkas) ? $jumlah_berkas : 1,
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
@@ -986,6 +1038,19 @@ class Arsip extends CI_Controller {
                     }
                 }
                 
+                // Handle tahun: jika hanya angka (tahun saja), konversi ke format date (YYYY-01-01)
+                $tahun_formatted_import = NULL;
+                if(!empty($tahun)) {
+                    // Cek apakah input hanya angka (tahun saja)
+                    if(is_numeric($tahun) && strlen($tahun) == 4) {
+                        // Input hanya tahun, konversi ke tanggal (1 Januari tahun tersebut)
+                        $tahun_formatted_import = $tahun . '-01-01';
+                    } else {
+                        // Input sudah format date, gunakan langsung
+                        $tahun_formatted_import = date('Y-m-d', strtotime($tahun));
+                    }
+                }
+                
                 // Siapkan data untuk insert
                 $data = array(
                     'kategori_id'            => $import_kategori_id,
@@ -994,7 +1059,7 @@ class Arsip extends CI_Controller {
                     'kode_id'                => $kode_id_import,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
-                    'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
+                    'tahun'                  => $tahun_formatted_import,
                     'jumlah_berkas'          => intval($jumlah_berkas),
                     'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
                     'box'                    => $box ?: NULL,

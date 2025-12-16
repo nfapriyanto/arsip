@@ -199,7 +199,14 @@
                                     <th>KODE</th>
                                     <th>INDEKS/PEKERJAAN</th>
                                     <th>URAIAN MASALAH/KEGIATAN</th>
-                                    <th>TANGGAL</th>
+                                    <?php 
+                                    // Cek kondisi: jika kategori parent = 'arsip aktif' dan parent_id = null, ubah header menjadi TAHUN
+                                    $is_arsip_aktif_table = isset($kategori_parent_check) && 
+                                                           $kategori_parent_check && 
+                                                           strtolower(trim($kategori_parent_check->nama)) == 'arsip aktif' && 
+                                                           empty($kategori_parent_check->parent_id);
+                                    ?>
+                                    <th><?php echo $is_arsip_aktif_table ? 'TAHUN' : 'TANGGAL'; ?></th>
                                     <th>JUMLAH BERKAS</th>
                                     <th>ASLI/KOPI</th>
                                     <th>BOX</th>
@@ -232,7 +239,20 @@
                                     </td>
                                         <td><?php echo $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-'; ?></td>
                                         <td><?php echo $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-'; ?></td>
-                                        <td><?php echo $ars->tahun ? date('d-m-Y', strtotime($ars->tahun)) : '-'; ?></td>
+                                        <td>
+                                            <?php 
+                                            if($ars->tahun) {
+                                                // Jika kategori parent = 'arsip aktif' dan parent_id = null, tampilkan hanya tahun
+                                                if($is_arsip_aktif_table) {
+                                                    echo date('Y', strtotime($ars->tahun));
+                                                } else {
+                                                    echo date('d-m-Y', strtotime($ars->tahun));
+                                                }
+                                            } else {
+                                                echo '-';
+                                            }
+                                            ?>
+                                        </td>
                                         <td><?php echo $ars->jumlah_berkas ? $ars->jumlah_berkas : 1; ?></td>
                                         <td>
                                             <?php if(isset($ars->asli_kopi) && $ars->asli_kopi): ?>
@@ -402,7 +422,19 @@
             </div>
             <div class="form-group">
                 <label>TANGGAL</label>
-                <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
+                <?php 
+                // Cek kondisi: jika kategori parent = 'arsip inaktif' dan parent_id = null, gunakan input year
+                $is_arsip_inaktif = isset($kategori_parent_check) && 
+                                     $kategori_parent_check && 
+                                     strtolower(trim($kategori_parent_check->nama)) == 'arsip inaktif' && 
+                                     empty($kategori_parent_check->parent_id);
+                ?>
+                <?php if($is_arsip_inaktif): ?>
+                    <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>" id="tahun_year_input">
+                    <small class="text-muted">Hanya isi tahun (bulan dan tanggal tidak perlu)</small>
+                <?php else: ?>
+                    <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
+                <?php endif; ?>
             </div>
             <div class="form-group">
                 <label>JUMLAH BERKAS</label>
@@ -419,12 +451,21 @@
                         </select>
                     </div>
                 </div>
+                <?php 
+                // Cek kondisi: jika kategori parent = 'arsip aktif' dan parent_id = null, sembunyikan field BOX
+                $is_arsip_aktif = isset($kategori_parent_check) && 
+                                  $kategori_parent_check && 
+                                  strtolower(trim($kategori_parent_check->nama)) == 'arsip aktif' && 
+                                  empty($kategori_parent_check->parent_id);
+                ?>
+                <?php if(!$is_arsip_aktif): ?>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>BOX</label>
                         <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1">
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
             <div class="form-group">
                 <label>KLASIFIKASI KEAMANAN DAN AKSES ARSIP DINAMIS</label>
@@ -534,7 +575,19 @@
             
             <div class="form-group">
                 <label>TANGGAL</label>
-                <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
+                <?php 
+                // Cek kondisi: jika kategori parent = 'arsip inaktif' dan parent_id = null, gunakan input year
+                $is_arsip_inaktif_bulk = isset($kategori_parent_check) && 
+                                         $kategori_parent_check && 
+                                         strtolower(trim($kategori_parent_check->nama)) == 'arsip inaktif' && 
+                                         empty($kategori_parent_check->parent_id);
+                ?>
+                <?php if($is_arsip_inaktif_bulk): ?>
+                    <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>" id="tahun_year_input_bulk">
+                    <small class="text-muted">Hanya isi tahun (bulan dan tanggal tidak perlu)</small>
+                <?php else: ?>
+                    <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
+                <?php endif; ?>
             </div>
             
             <div class="form-group">
@@ -553,12 +606,21 @@
                         </select>
                     </div>
                 </div>
+                <?php 
+                // Cek kondisi: jika kategori parent = 'arsip aktif' dan parent_id = null, sembunyikan field BOX
+                $is_arsip_aktif_bulk = isset($kategori_parent_check) && 
+                                      $kategori_parent_check && 
+                                      strtolower(trim($kategori_parent_check->nama)) == 'arsip aktif' && 
+                                      empty($kategori_parent_check->parent_id);
+                ?>
+                <?php if(!$is_arsip_aktif_bulk): ?>
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>BOX</label>
                         <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1">
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
             
             <div class="form-group">
@@ -710,7 +772,37 @@
                     </div>
                     <div class="form-group">
                         <label>TANGGAL</label>
-                        <input type="date" class="form-control" name="tahun" value="<?php echo isset($ars->tahun) && !empty($ars->tahun) ? date('Y-m-d', strtotime($ars->tahun)) : date('Y-m-d'); ?>">
+                        <?php 
+                        // Ambil kategori dari arsip yang sedang diedit
+                        $kategori_arsip_edit = $this->m_model->get_where(array('id' => $ars->kategori_id), 'tb_kategori_arsip')->row();
+                        $kategori_parent_edit = null;
+                        if($kategori_arsip_edit) {
+                            if(empty($kategori_arsip_edit->parent_id)) {
+                                $kategori_parent_edit = $kategori_arsip_edit;
+                            } else {
+                                $kategori_parent_edit = $this->m_model->get_where(array('id' => $kategori_arsip_edit->parent_id), 'tb_kategori_arsip')->row();
+                            }
+                        }
+                        // Cek kondisi: jika kategori parent = 'arsip inaktif' dan parent_id = null, gunakan input year
+                        $is_arsip_inaktif_edit = $kategori_parent_edit && 
+                                                 strtolower(trim($kategori_parent_edit->nama)) == 'arsip inaktif' && 
+                                                 empty($kategori_parent_edit->parent_id);
+                        ?>
+                        <?php if($is_arsip_inaktif_edit): ?>
+                            <?php 
+                            // Jika tahun sudah ada, ambil tahun saja
+                            $tahun_value = '';
+                            if(isset($ars->tahun) && !empty($ars->tahun)) {
+                                $tahun_value = date('Y', strtotime($ars->tahun));
+                            } else {
+                                $tahun_value = date('Y');
+                            }
+                            ?>
+                            <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo $tahun_value; ?>" id="tahun_year_input_edit<?php echo $ars->id; ?>">
+                            <small class="text-muted">Hanya isi tahun (bulan dan tanggal tidak perlu)</small>
+                        <?php else: ?>
+                            <input type="date" class="form-control" name="tahun" value="<?php echo isset($ars->tahun) && !empty($ars->tahun) ? date('Y-m-d', strtotime($ars->tahun)) : date('Y-m-d'); ?>">
+                        <?php endif; ?>
                     </div>
                     <div class="form-group">
                         <label>JUMLAH BERKAS</label>
@@ -727,12 +819,20 @@
                                 </select>
                             </div>
                         </div>
+                        <?php 
+                        // Cek kondisi: jika kategori parent = 'arsip aktif' dan parent_id = null, sembunyikan field BOX
+                        $is_arsip_aktif_edit = $kategori_parent_edit && 
+                                              strtolower(trim($kategori_parent_edit->nama)) == 'arsip aktif' && 
+                                              empty($kategori_parent_edit->parent_id);
+                        ?>
+                        <?php if(!$is_arsip_aktif_edit): ?>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>BOX</label>
                                 <input type="text" class="form-control" name="box" placeholder="Contoh: 1, 2, A-1" value="<?php echo isset($ars->box) ? $ars->box : ''; ?>">
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                     <div class="form-group">
                         <label>KLASIFIKASI KEAMANAN DAN AKSES ARSIP DINAMIS</label>
