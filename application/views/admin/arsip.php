@@ -199,7 +199,7 @@
                                     <th>KODE</th>
                                     <th>INDEKS/PEKERJAAN</th>
                                     <th>URAIAN MASALAH/KEGIATAN</th>
-                                    <th>TAHUN</th>
+                                    <th>TANGGAL</th>
                                     <th>JUMLAH BERKAS</th>
                                     <th>ASLI/KOPI</th>
                                     <th>BOX</th>
@@ -232,7 +232,7 @@
                                     </td>
                                         <td><?php echo $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-'; ?></td>
                                         <td><?php echo $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-'; ?></td>
-                                        <td><?php echo $ars->tahun ? $ars->tahun : '-'; ?></td>
+                                        <td><?php echo $ars->tahun ? date('d-m-Y', strtotime($ars->tahun)) : '-'; ?></td>
                                         <td><?php echo $ars->jumlah_berkas ? $ars->jumlah_berkas : 1; ?></td>
                                         <td>
                                             <?php if(isset($ars->asli_kopi) && $ars->asli_kopi): ?>
@@ -401,8 +401,8 @@
                 <textarea class="form-control" name="uraian_masalah_kegiatan" placeholder="Uraian Masalah/Kegiatan" rows="3"></textarea>
             </div>
             <div class="form-group">
-                <label>TAHUN</label>
-                <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>">
+                <label>TANGGAL</label>
+                <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
             </div>
             <div class="form-group">
                 <label>JUMLAH BERKAS</label>
@@ -533,8 +533,8 @@
             </div>
             
             <div class="form-group">
-                <label>TAHUN</label>
-                <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo date('Y'); ?>">
+                <label>TANGGAL</label>
+                <input type="date" class="form-control" name="tahun" value="<?php echo date('Y-m-d'); ?>">
             </div>
             
             <div class="form-group">
@@ -709,8 +709,8 @@
                         <textarea class="form-control" name="uraian_masalah_kegiatan" rows="3"><?php echo isset($ars->uraian_masalah_kegiatan) ? $ars->uraian_masalah_kegiatan : ''; ?></textarea>
                     </div>
                     <div class="form-group">
-                        <label>TAHUN</label>
-                        <input type="number" class="form-control" name="tahun" placeholder="Contoh: 2024" min="1900" max="<?php echo date('Y') + 1; ?>" value="<?php echo isset($ars->tahun) ? $ars->tahun : date('Y'); ?>">
+                        <label>TANGGAL</label>
+                        <input type="date" class="form-control" name="tahun" value="<?php echo isset($ars->tahun) && !empty($ars->tahun) ? date('Y-m-d', strtotime($ars->tahun)) : date('Y-m-d'); ?>">
                     </div>
                     <div class="form-group">
                         <label>JUMLAH BERKAS</label>

@@ -363,7 +363,7 @@ class Arsip extends CI_Controller {
                     'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
-                    'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,
+                    'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
                     'jumlah_berkas'          => intval($jumlah_berkas),
                     'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
                     'box'                    => $box ?: NULL,
@@ -510,7 +510,7 @@ class Arsip extends CI_Controller {
             'kode'                   => $kode,
             'indeks_pekerjaan'       => $indeks_pekerjaan,
             'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
-            'tahun'                  => !empty($tahun) ? $tahun : NULL,
+            'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
             'jumlah_berkas'          => $jumlah_berkas,
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
@@ -672,7 +672,7 @@ class Arsip extends CI_Controller {
             'kode_id'                => !empty($kode_id) ? $kode_id : NULL,
             'indeks_pekerjaan'       => $indeks_pekerjaan,
             'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan,
-            'tahun'                  => !empty($tahun) ? $tahun : NULL,
+            'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
             'jumlah_berkas'          => !empty($jumlah_berkas) ? $jumlah_berkas : 1,
             'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
             'box'                    => $box,
@@ -943,11 +943,24 @@ class Arsip extends CI_Controller {
                     $jumlah_berkas = 1;
                 }
                 
-                // Validasi tahun
-                if(!empty($tahun) && (!is_numeric($tahun) || $tahun < 1900 || $tahun > date('Y') + 1)) {
-                    $errors[] = "Baris $row_num: Tahun tidak valid";
-                    $error_count++;
-                    continue;
+                // Validasi tanggal (tahun)
+                if(!empty($tahun)) {
+                    // Coba parse sebagai tanggal
+                    $tahun_timestamp = strtotime($tahun);
+                    if($tahun_timestamp === false) {
+                        // Jika bukan format tanggal, coba sebagai tahun (untuk backward compatibility)
+                        if(is_numeric($tahun) && $tahun >= 1900 && $tahun <= date('Y') + 1) {
+                            // Konversi tahun ke tanggal (1 Januari tahun tersebut)
+                            $tahun = $tahun . '-01-01';
+                        } else {
+                            $errors[] = "Baris $row_num: Tanggal tidak valid";
+                            $error_count++;
+                            continue;
+                        }
+                    } else {
+                        // Format tanggal yang valid, pastikan format Y-m-d
+                        $tahun = date('Y-m-d', $tahun_timestamp);
+                    }
                 }
                 
                 // Validasi no_urut
@@ -981,7 +994,7 @@ class Arsip extends CI_Controller {
                     'kode_id'                => $kode_id_import,
                     'indeks_pekerjaan'       => $indeks_pekerjaan ?: NULL,
                     'uraian_masalah_kegiatan' => $uraian_masalah_kegiatan ?: NULL,
-                    'tahun'                  => !empty($tahun) ? intval($tahun) : NULL,
+                    'tahun'                  => !empty($tahun) ? date('Y-m-d', strtotime($tahun)) : NULL,
                     'jumlah_berkas'          => intval($jumlah_berkas),
                     'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
                     'box'                    => $box ?: NULL,
@@ -1182,7 +1195,7 @@ class Arsip extends CI_Controller {
             'D1' => 'Kode',
             'E1' => 'Indeks/Pekerjaan',
             'F1' => 'Uraian Masalah/Kegiatan',
-            'G1' => 'Tahun',
+            'G1' => 'Tanggal',
             'H1' => 'Jumlah Berkas',
             'I1' => 'Asli/Kopi',
             'J1' => 'Box',
@@ -1222,7 +1235,7 @@ class Arsip extends CI_Controller {
         $sheet->setCellValue('D2', 'SM-001');
         $sheet->setCellValue('E2', 'Surat Masuk');
         $sheet->setCellValue('F2', 'Contoh uraian masalah/kegiatan');
-        $sheet->setCellValue('G2', '2024');
+        $sheet->setCellValue('G2', '2024-01-15');
         $sheet->setCellValue('H2', '1');
         $sheet->setCellValue('I2', 'Asli');
         $sheet->setCellValue('J2', '1');
@@ -1238,9 +1251,10 @@ class Arsip extends CI_Controller {
         $sheet->getStyle('A4')->getFont()->setBold(true);
         $sheet->setCellValue('A5', '1. Kategori: Kosongkan untuk menggunakan kategori yang dipilih saat import');
         $sheet->setCellValue('A6', '2. No Berkas: Kosongkan untuk generate otomatis');
-        $sheet->setCellValue('A7', '3. Asli/Kopi: Isi dengan "Asli" atau "Kopi"');
-        $sheet->setCellValue('A8', '4. Klasifikasi Keamanan: Umum, Terbatas, Rahasia, Sangat Rahasia');
-        $sheet->setCellValue('A9', '5. Link Drive: URL lengkap jika tidak upload file');
+        $sheet->setCellValue('A7', '3. Tanggal: Format YYYY-MM-DD (contoh: 2024-01-15) atau YYYY (untuk konversi otomatis)');
+        $sheet->setCellValue('A8', '4. Asli/Kopi: Isi dengan "Asli" atau "Kopi"');
+        $sheet->setCellValue('A9', '5. Klasifikasi Keamanan: Umum, Terbatas, Rahasia, Sangat Rahasia');
+        $sheet->setCellValue('A10', '6. Link Drive: URL lengkap jika tidak upload file');
         
         // Output file
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
@@ -1303,7 +1317,7 @@ class Arsip extends CI_Controller {
             'D1' => 'Kode',
             'E1' => 'Indeks/Pekerjaan',
             'F1' => 'Uraian Masalah/Kegiatan',
-            'G1' => 'Tahun',
+            'G1' => 'Tanggal',
             'H1' => 'Jumlah Berkas',
             'I1' => 'Asli/Kopi',
             'J1' => 'Box',
@@ -1358,7 +1372,12 @@ class Arsip extends CI_Controller {
             $sheet->setCellValue('D' . $row, $ars->kode ? $ars->kode : '-');
             $sheet->setCellValue('E' . $row, $ars->indeks_pekerjaan ? $ars->indeks_pekerjaan : '-');
             $sheet->setCellValue('F' . $row, $ars->uraian_masalah_kegiatan ? $ars->uraian_masalah_kegiatan : '-');
-            $sheet->setCellValue('G' . $row, $ars->tahun ? $ars->tahun : '-');
+            // Format tanggal
+            $tanggal = '-';
+            if($ars->tahun) {
+                $tanggal = date('d-m-Y', strtotime($ars->tahun));
+            }
+            $sheet->setCellValue('G' . $row, $tanggal);
             $sheet->setCellValue('H' . $row, $ars->jumlah_berkas ? $ars->jumlah_berkas : 1);
             $sheet->setCellValue('I' . $row, $ars->asli_kopi ? $ars->asli_kopi : '-');
             $sheet->setCellValue('J' . $row, $ars->box ? $ars->box : '-');
