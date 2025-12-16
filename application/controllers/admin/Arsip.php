@@ -134,9 +134,48 @@ class Arsip extends CI_Controller {
         // Karena foreign key constraint memerlukan arsip masih ada saat log dibuat
         $this->logAksi($id, 'Delete', 'Arsip dihapus');
         
-        // Hapus file fisik jika ada
-        if($path_file && file_exists($path_file)) {
-            @unlink($path_file);
+        // Hapus file fisik dari sistem jika ada
+        if(!empty($path_file)) {
+            // Normalisasi path (handle relative dan absolute path)
+            $file_path = $path_file;
+            
+            // Jika path relatif (dimulai dengan ./), ubah ke absolute
+            if(strpos($file_path, './') === 0) {
+                $file_path = FCPATH . substr($file_path, 2);
+            } elseif(strpos($file_path, '/') !== 0 && strpos($file_path, ':') === false) {
+                // Jika path tidak dimulai dengan / atau drive letter, anggap relatif dari FCPATH
+                $file_path = FCPATH . $file_path;
+            }
+            
+            // Hapus file jika ada
+            if(file_exists($file_path)) {
+                @unlink($file_path);
+            }
+            
+            // Juga coba dengan path asli dari database (untuk kompatibilitas)
+            if($path_file != $file_path && file_exists($path_file)) {
+                @unlink($path_file);
+            }
+        }
+        
+        // Hapus thumbnail jika ada
+        $thumbnail_dir = './uploads/thumbnails/';
+        $thumbnail_path = $thumbnail_dir . 'thumb_' . $id . '.jpg';
+        
+        // Normalisasi path thumbnail
+        if(strpos($thumbnail_path, './') === 0) {
+            $thumbnail_absolute = FCPATH . substr($thumbnail_path, 2);
+        } else {
+            $thumbnail_absolute = FCPATH . $thumbnail_path;
+        }
+        
+        if(file_exists($thumbnail_absolute)) {
+            @unlink($thumbnail_absolute);
+        }
+        
+        // Juga coba dengan path relatif
+        if(file_exists($thumbnail_path)) {
+            @unlink($thumbnail_path);
         }
 
         // Hapus data dari database
@@ -649,10 +688,51 @@ class Arsip extends CI_Controller {
         
         // Jika ada file baru diupload
         if($file_uploaded) {
-            // Hapus file lama
+            // Ambil data arsip lama untuk menghapus file lama
             $arsip_lama = $this->m_model->get_where($where, 'tb_arsip')->row();
-            if($arsip_lama && file_exists($arsip_lama->path_file)) {
-                @unlink($arsip_lama->path_file);
+            
+            // Hapus file lama jika ada
+            if($arsip_lama && !empty($arsip_lama->path_file)) {
+                $old_file_path = $arsip_lama->path_file;
+                
+                // Normalisasi path (handle relative dan absolute path)
+                if(strpos($old_file_path, './') === 0) {
+                    $old_file_absolute = FCPATH . substr($old_file_path, 2);
+                } elseif(strpos($old_file_path, '/') !== 0 && strpos($old_file_path, ':') === false) {
+                    $old_file_absolute = FCPATH . $old_file_path;
+                } else {
+                    $old_file_absolute = $old_file_path;
+                }
+                
+                // Hapus file lama jika ada
+                if(file_exists($old_file_absolute)) {
+                    @unlink($old_file_absolute);
+                }
+                
+                // Juga coba dengan path asli dari database (untuk kompatibilitas)
+                if($old_file_path != $old_file_absolute && file_exists($old_file_path)) {
+                    @unlink($old_file_path);
+                }
+                
+                // Hapus thumbnail lama jika ada
+                $thumbnail_dir = './uploads/thumbnails/';
+                $thumbnail_path = $thumbnail_dir . 'thumb_' . $id . '.jpg';
+                
+                // Normalisasi path thumbnail
+                if(strpos($thumbnail_path, './') === 0) {
+                    $thumbnail_absolute = FCPATH . substr($thumbnail_path, 2);
+                } else {
+                    $thumbnail_absolute = FCPATH . $thumbnail_path;
+                }
+                
+                if(file_exists($thumbnail_absolute)) {
+                    @unlink($thumbnail_absolute);
+                }
+                
+                // Juga coba dengan path relatif
+                if(file_exists($thumbnail_path)) {
+                    @unlink($thumbnail_path);
+                }
             }
             
             // Upload file baru
