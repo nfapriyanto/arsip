@@ -460,7 +460,7 @@
                 </div>
                 <div id="file_upload_section">
                     <input type="file" class="form-control" id="file_arsip" name="file_arsip" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar" required>
-                    <small class="text-muted">Format: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR (Max: 10MB)</small>
+                    <small class="text-muted">Format: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR</small>
                 </div>
                 <div id="link_drive_section" style="display:none;">
                     <input type="url" class="form-control" id="link_drive" name="link_drive" placeholder="https://onedrive.live.com/...">
@@ -495,7 +495,7 @@
               - Pilih multiple file sekaligus untuk diupload<br>
               - Semua file akan menggunakan data yang sama di bawah<br>
               - No Berkas akan digenerate otomatis untuk setiap file<br>
-              - Format file: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR (Max: 10MB per file)
+              - Format file: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR
             </div>
             
             <div class="form-group">
@@ -1007,21 +1007,6 @@ function validateFileOrLink() {
         if(files.length === 0) {
             e.preventDefault();
             alert('Pilih minimal 1 file untuk diupload!');
-            return false;
-        }
-        
-        // Validasi ukuran file
-        var maxSize = 10 * 1024 * 1024; // 10MB
-        var invalidFiles = [];
-        for(var i = 0; i < files.length; i++) {
-            if(files[i].size > maxSize) {
-                invalidFiles.push(files[i].name);
-            }
-        }
-        
-        if(invalidFiles.length > 0) {
-            e.preventDefault();
-            alert('File berikut melebihi ukuran maksimal 10MB:\n' + invalidFiles.join('\n'));
             return false;
         }
         

@@ -219,3 +219,5 @@ INSERT INTO `tb_kode_arsip` (`kode`, `nama`, `createDate`) VALUES
 ('UM0704', 'UM0704 – Pengumpulan/Penyaluran Sumbangan', NOW());
 
 
+
+
