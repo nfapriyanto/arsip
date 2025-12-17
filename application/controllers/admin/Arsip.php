@@ -937,7 +937,7 @@ class Arsip extends CI_Controller {
                 // Mapping kolom Excel ke field database
                 // Kolom: A=Kategori, B=No Berkas, C=No Urut, D=Kode, E=Indeks/Pekerjaan, 
                 //        F=Uraian Masalah/Kegiatan, G=Tahun, H=Jumlah Berkas, I=Asli/Kopi, 
-                //        J=Box, K=Klasifikasi Keamanan, L=Link Drive
+                //        J=Box, K=Klasifikasi Keamanan, L=Nama PIC, M=Nama File, N=Link Drive
                 
                 $kategori_nama = isset($row[0]) ? trim($row[0]) : '';
                 $no_berkas = isset($row[1]) ? trim($row[1]) : '';
@@ -950,7 +950,9 @@ class Arsip extends CI_Controller {
                 $asli_kopi = isset($row[8]) ? trim($row[8]) : '';
                 $box = isset($row[9]) ? trim($row[9]) : '';
                 $klasifikasi_keamanan = isset($row[10]) ? trim($row[10]) : '';
-                $link_drive = isset($row[11]) ? trim($row[11]) : '';
+                $nama_pic = isset($row[11]) ? trim($row[11]) : '';
+                $nama_file = isset($row[12]) ? trim($row[12]) : '';
+                $link_drive = isset($row[13]) ? trim($row[13]) : '';
                 
                 // Cari kode_id dari kode yang diinput (jika ada)
                 $kode_id_import = NULL;
@@ -1023,10 +1025,17 @@ class Arsip extends CI_Controller {
                 }
                 
                 // Validasi link_drive (harus URL jika diisi)
-                if(!empty($link_drive) && !filter_var($link_drive, FILTER_VALIDATE_URL)) {
-                    $errors[] = "Baris $row_num: Link Drive harus berupa URL yang valid";
-                    $error_count++;
-                    continue;
+                // Bersihkan karakter tersembunyi dan whitespace
+                if(!empty($link_drive)) {
+                    // Hapus karakter BOM, non-printable characters, dan whitespace di awal/akhir
+                    $link_drive = trim(preg_replace('/[\x00-\x1F\x7F\xA0]/u', '', $link_drive));
+                    
+                    // Validasi URL dengan lebih fleksibel
+                    if(!filter_var($link_drive, FILTER_VALIDATE_URL)) {
+                        $errors[] = "Baris $row_num: Link Drive harus berupa URL yang valid (contoh: https://onedrive.live.com/...). URL Anda: '$link_drive'";
+                        $error_count++;
+                        continue;
+                    }
                 }
                 
                 // Cari kode_id dari kode yang diinput (jika ada)
@@ -1052,6 +1061,9 @@ class Arsip extends CI_Controller {
                 }
                 
                 // Siapkan data untuk insert
+                // Jika nama_pic diisi di Excel, gunakan itu; jika tidak, gunakan nama user dari session
+                $nama_pengisi_final = !empty($nama_pic) ? $nama_pic : $nama_pengisi;
+                
                 $data = array(
                     'kategori_id'            => $import_kategori_id,
                     'no_berkas'              => $no_berkas,
@@ -1064,7 +1076,7 @@ class Arsip extends CI_Controller {
                     'asli_kopi'              => !empty($asli_kopi) ? $asli_kopi : NULL,
                     'box'                    => $box ?: NULL,
                     'klasifikasi_keamanan'   => $klasifikasi_keamanan ?: NULL,
-                    'nama_pengisi'           => $nama_pengisi,
+                    'nama_pengisi'           => $nama_pengisi_final,
                     'link_drive'             => $link_drive ?: NULL,
                     'createDate'             => $createDate,
                     'created_by'             => $user_id
@@ -1265,7 +1277,9 @@ class Arsip extends CI_Controller {
             'I1' => 'Asli/Kopi',
             'J1' => 'Box',
             'K1' => 'Klasifikasi Keamanan',
-            'L1' => 'Link Drive'
+            'L1' => 'Nama PIC (Opsional)',
+            'M1' => 'Nama File (Opsional)',
+            'N1' => 'Link Drive (Opsional)'
         );
         
         foreach($headers as $cell => $value) {
@@ -1273,11 +1287,11 @@ class Arsip extends CI_Controller {
         }
         
         // Set style untuk header
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:L1')->getFill()
+        $sheet->getStyle('A1:N1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:N1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF4472C4');
-        $sheet->getStyle('A1:L1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:N1')->getFont()->getColor()->setARGB('FFFFFFFF');
         
         // Set width kolom
         $sheet->getColumnDimension('A')->setWidth(20);
@@ -1291,7 +1305,9 @@ class Arsip extends CI_Controller {
         $sheet->getColumnDimension('I')->setWidth(12);
         $sheet->getColumnDimension('J')->setWidth(12);
         $sheet->getColumnDimension('K')->setWidth(25);
-        $sheet->getColumnDimension('L')->setWidth(50);
+        $sheet->getColumnDimension('L')->setWidth(20);
+        $sheet->getColumnDimension('M')->setWidth(30);
+        $sheet->getColumnDimension('N')->setWidth(50);
         
         // Tambahkan contoh data
         $sheet->setCellValue('A2', 'Contoh: Surat Masuk');
@@ -1305,11 +1321,13 @@ class Arsip extends CI_Controller {
         $sheet->setCellValue('I2', 'Asli');
         $sheet->setCellValue('J2', '1');
         $sheet->setCellValue('K2', 'Umum');
-        $sheet->setCellValue('L2', '');
+        $sheet->setCellValue('L2', 'Administrator');
+        $sheet->setCellValue('M2', '');
+        $sheet->setCellValue('N2', 'https://onedrive.live.com/contoh-link');
         
         // Set style untuk contoh
-        $sheet->getStyle('A2:L2')->getFont()->setItalic(true);
-        $sheet->getStyle('A2:L2')->getFont()->getColor()->setARGB('FF808080');
+        $sheet->getStyle('A2:N2')->getFont()->setItalic(true);
+        $sheet->getStyle('A2:N2')->getFont()->getColor()->setARGB('FF808080');
         
         // Tambahkan catatan
         $sheet->setCellValue('A4', 'CATATAN:');
@@ -1319,7 +1337,9 @@ class Arsip extends CI_Controller {
         $sheet->setCellValue('A7', '3. Tanggal: Format YYYY-MM-DD (contoh: 2024-01-15) atau YYYY (untuk konversi otomatis)');
         $sheet->setCellValue('A8', '4. Asli/Kopi: Isi dengan "Asli" atau "Kopi"');
         $sheet->setCellValue('A9', '5. Klasifikasi Keamanan: Umum, Terbatas, Rahasia, Sangat Rahasia');
-        $sheet->setCellValue('A10', '6. Link Drive: URL lengkap jika tidak upload file');
+        $sheet->setCellValue('A10', '6. Nama PIC: Opsional, kosongkan untuk menggunakan nama user yang login');
+        $sheet->setCellValue('A11', '7. Nama File: Opsional, untuk import tanpa upload file fisik');
+        $sheet->setCellValue('A12', '8. Link Drive: URL lengkap (https://...) jika tidak upload file, contoh: https://onedrive.live.com/...');
         
         // Output file
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);

@@ -31,7 +31,7 @@
         <?php if(isset($kategori) && !isset($arsip)): ?>
             <!-- TAMPILAN KATEGORI -->
             <!-- Tombol Tambah Data -->
-            <div class="btn btn-danger" data-toggle="modal" data-target="#tambahData">
+            <div class="btn btn-danger" data-toggle="modal" data-target="#tambahKategoriUtama">
                 <div class="fa fa-plus"></div> Tambah Kategori
             </div>
 
@@ -319,7 +319,7 @@
 
   <!-- Modal Tambah Kategori (untuk halaman kategori) -->
   <?php if(isset($kategori) && !isset($arsip)): ?>
-  <div class="modal fade" id="tambahData" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal fade" id="tambahKategoriUtama" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-header">
@@ -971,34 +971,15 @@
 
 
 <script>
-$(document).ready(function() {
-    // Inisialisasi toggle saat halaman dimuat untuk form tambah
-    if($('input[name="file_type"]:checked').length > 0) {
-        toggleFileInput();
-    }
-    
-    // Inisialisasi toggle untuk setiap form edit saat modal dibuka
-    $('input[name^="file_type_edit"]').on('change', function() {
-        var id = $(this).attr('name').replace('file_type_edit', '');
-        toggleFileInputEdit(id);
-    });
-    
-    // Inisialisasi saat modal edit dibuka
-    $('[id^="editData"]').on('shown.bs.modal', function() {
-        var modalId = $(this).attr('id');
-        var id = modalId.replace('editData', '');
-        if($('input[name="file_type_edit' + id + '"]:checked').length > 0) {
-            toggleFileInputEdit(id);
-        }
-    });
-});
-
+// Fungsi toggle untuk form tambah arsip (DI LUAR document.ready agar bisa dipanggil dari inline onchange)
 function toggleFileInput() {
     var fileType = $('input[name="file_type"]:checked').val();
     var fileSection = $('#file_upload_section');
     var linkSection = $('#link_drive_section');
     var fileInput = $('#file_arsip');
     var linkInput = $('#link_drive');
+    
+    console.log('toggleFileInput called, fileType:', fileType); // Debug log
     
     if(fileType === 'upload') {
         fileSection.show();
@@ -1012,7 +993,7 @@ function toggleFileInput() {
             linkInput.val('');
             linkInput.prop('disabled', true);
         }
-    } else {
+    } else if(fileType === 'drive') {
         fileSection.hide();
         linkSection.show();
         if(fileInput.length) {
@@ -1027,6 +1008,7 @@ function toggleFileInput() {
     }
 }
 
+// Fungsi toggle untuk form edit arsip (DI LUAR document.ready)
 function toggleFileInputEdit(id) {
     var fileType = $('input[name="file_type_edit' + id + '"]:checked').val();
     var fileSection = $('#file_upload_section_edit' + id);
@@ -1057,7 +1039,7 @@ function toggleFileInputEdit(id) {
     }
 }
 
-// Validasi form: harus ada file atau link drive
+// Validasi form: harus ada file atau link drive (DI LUAR document.ready)
 function validateFileOrLink() {
     var fileType = $('input[name="file_type"]:checked').val();
     var fileInput = $('#file_arsip');
@@ -1076,6 +1058,34 @@ function validateFileOrLink() {
     }
     return true;
 }
+
+$(document).ready(function() {
+    // Inisialisasi toggle saat halaman dimuat untuk form tambah
+    if($('input[name="file_type"]:checked').length > 0) {
+        toggleFileInput();
+    }
+    
+    // Inisialisasi saat modal tambah arsip dibuka
+    $('#tambahData').on('shown.bs.modal', function() {
+        // Panggil toggleFileInput untuk memastikan tampilan sesuai dengan radio button yang dipilih
+        toggleFileInput();
+    });
+    
+    // Inisialisasi toggle untuk setiap form edit saat modal dibuka
+    $('input[name^="file_type_edit"]').on('change', function() {
+        var id = $(this).attr('name').replace('file_type_edit', '');
+        toggleFileInputEdit(id);
+    });
+    
+    // Inisialisasi saat modal edit dibuka
+    $('[id^="editData"]').on('shown.bs.modal', function() {
+        var modalId = $(this).attr('id');
+        var id = modalId.replace('editData', '');
+        if($('input[name="file_type_edit' + id + '"]:checked').length > 0) {
+            toggleFileInputEdit(id);
+        }
+    });
+    
     // Bulk Upload - Tampilkan daftar file yang dipilih
     $('#files_arsip').on('change', function() {
         var files = this.files;
