@@ -510,6 +510,57 @@
     </div>
   </div>
   
+  <!-- Modal Progress Upload Single Arsip -->
+  <div class="modal fade" id="uploadProgressModal" tabindex="-1" role="dialog" aria-labelledby="uploadProgressModalLabel" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title" id="uploadProgressModalLabel">
+            <i class="fa fa-cloud-upload"></i> Upload Progress
+          </h4>
+        </div>
+        <div class="modal-body">
+          <div class="text-center" style="margin-bottom: 15px;">
+            <h4 id="single-upload-status">Mengupload arsip...</h4>
+          </div>
+          <div class="progress" style="height: 30px; margin-bottom: 10px;">
+            <div id="single-upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated progress-bar-info" 
+                 role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+              <span id="single-upload-progress-text" style="font-size: 16px; font-weight: bold;">0%</span>
+            </div>
+          </div>
+          <div class="text-center">
+            <p id="single-upload-file-info" class="text-muted">
+              <i class="fa fa-file"></i> <span id="single-upload-filename">Mempersiapkan upload...</span>
+            </p>
+            <p id="single-upload-size-info" class="text-muted" style="margin-top: -10px;">
+              <small>Ukuran: <span id="single-upload-filesize">-</span></small>
+            </p>
+          </div>
+          <div id="single-upload-complete-info" style="display: none; margin-top: 15px;">
+            <div class="alert alert-success text-center">
+              <i class="fa fa-check-circle" style="font-size: 24px;"></i><br>
+              <strong>Upload berhasil!</strong><br>
+              <small>Halaman akan dimuat ulang...</small>
+            </div>
+          </div>
+          <div id="single-upload-error-info" style="display: none; margin-top: 15px;">
+            <div class="alert alert-danger">
+              <i class="fa fa-exclamation-triangle"></i>
+              <strong>Upload gagal!</strong><br>
+              <span id="single-upload-error-message"></span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" id="btn-close-single-progress" style="display: none;">
+            <i class="fa fa-times"></i> Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <!-- Modal Bulk Upload -->
   <div class="modal fade" id="bulkUploadModal" tabindex="-1" role="dialog" aria-labelledby="bulkUploadModalLabel">
     <div class="modal-dialog modal-lg" role="document">
@@ -993,6 +1044,107 @@
   <?php endif; ?>
 
 
+<style>
+/* Custom styling untuk modal upload progress */
+#uploadProgressModal .modal-content {
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,.3);
+}
+
+#uploadProgressModal .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    padding: 20px;
+}
+
+#uploadProgressModal .modal-header .modal-title {
+    font-weight: 600;
+    font-size: 20px;
+}
+
+#uploadProgressModal .modal-body {
+    padding: 30px;
+}
+
+#single-upload-status {
+    color: #333;
+    font-weight: 500;
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+#single-upload-progress-bar {
+    transition: width 0.3s ease;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#single-upload-file-info {
+    font-size: 14px;
+    margin-top: 15px;
+}
+
+#single-upload-file-info i {
+    color: #667eea;
+    margin-right: 5px;
+}
+
+#single-upload-filename {
+    font-weight: 600;
+    color: #333;
+}
+
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.1);
+}
+
+.progress-bar-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.progress-bar-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.progress-bar-danger {
+    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+}
+
+#single-upload-complete-info .alert {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+#single-upload-complete-info .fa-check-circle {
+    color: #38ef7d;
+    margin-bottom: 10px;
+}
+
+#single-upload-error-info .alert {
+    border-radius: 8px;
+    border: none;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+#single-upload-complete-info .fa-check-circle {
+    animation: pulse 1.5s ease infinite;
+}
+</style>
 
 <script>
 // Fungsi toggle untuk form tambah arsip (DI LUAR document.ready agar bisa dipanggil dari inline onchange)
@@ -1092,6 +1244,136 @@ $(document).ready(function() {
     // Inisialisasi saat modal tambah arsip dibuka
     $('#tambahData').on('shown.bs.modal', function() {
         // Panggil toggleFileInput untuk memastikan tampilan sesuai dengan radio button yang dipilih
+        toggleFileInput();
+    });
+    
+    // Handle submit form tambah arsip dengan AJAX dan progress bar
+    $('#formTambahArsip').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Validasi file atau link
+        if(!validateFileOrLink()) {
+            return false;
+        }
+        
+        var fileType = $('input[name="file_type"]:checked').val();
+        var fileInput = $('#file_arsip')[0];
+        
+        // Jika upload file, tampilkan progress modal
+        if(fileType === 'upload' && fileInput.files.length > 0) {
+            var file = fileInput.files[0];
+            var fileSize = (file.size / 1024 / 1024).toFixed(2);
+            
+            // Set info file
+            $('#single-upload-filename').text(file.name);
+            $('#single-upload-filesize').text(fileSize + ' MB');
+            
+            // Reset progress bar
+            $('#single-upload-progress-bar').css('width', '0%').attr('aria-valuenow', 0);
+            $('#single-upload-progress-text').text('0%');
+            $('#single-upload-status').text('Mengupload arsip...');
+            $('#single-upload-progress-bar').removeClass('progress-bar-success progress-bar-danger').addClass('progress-bar-info progress-bar-striped progress-bar-animated');
+            $('#single-upload-complete-info').hide();
+            $('#single-upload-error-info').hide();
+            $('#btn-close-single-progress').hide();
+            
+            // Tutup modal tambah dan buka modal progress
+            $('#tambahData').modal('hide');
+            $('#uploadProgressModal').modal('show');
+            
+            // Buat FormData
+            var formData = new FormData(this);
+            
+            // Submit via AJAX dengan progress tracking
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                cache: false,
+                xhr: function() {
+                    var xhr = new window.XMLHttpRequest();
+                    
+                    // Track upload progress
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            var percentComplete = (e.loaded / e.total) * 100;
+                            $('#single-upload-progress-bar').css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
+                            $('#single-upload-progress-text').text(percentComplete.toFixed(1) + '%');
+                            
+                            // Update status
+                            if(percentComplete < 100) {
+                                $('#single-upload-status').text('Mengupload arsip... (' + (e.loaded / 1024 / 1024).toFixed(2) + ' / ' + (e.total / 1024 / 1024).toFixed(2) + ' MB)');
+                            } else {
+                                $('#single-upload-status').text('Memproses data...');
+                            }
+                        }
+                    }, false);
+                    
+                    return xhr;
+                },
+                success: function(response) {
+                    // Update progress bar to 100%
+                    $('#single-upload-progress-bar').css('width', '100%').attr('aria-valuenow', 100);
+                    $('#single-upload-progress-text').text('100%');
+                    $('#single-upload-progress-bar').removeClass('progress-bar-info progress-bar-striped progress-bar-animated').addClass('progress-bar-success');
+                    $('#single-upload-status').text('Upload selesai!');
+                    
+                    // Tampilkan pesan sukses
+                    $('#single-upload-complete-info').show();
+                    
+                    // Tunggu 2 detik lalu reload
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Upload error:', error, xhr);
+                    
+                    var errorMsg = 'Terjadi kesalahan saat upload';
+                    
+                    // Cek error response
+                    if(xhr.status === 0 || xhr.status === 413) {
+                        errorMsg = 'Ukuran file melebihi limit server. Silakan upload file dengan ukuran lebih kecil atau tingkatkan limit di php.ini.';
+                    } else if(xhr.responseText) {
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            if(response.message) {
+                                errorMsg = response.message;
+                            }
+                        } catch(e) {
+                            errorMsg = xhr.responseText;
+                        }
+                    } else {
+                        errorMsg += ': ' + error;
+                    }
+                    
+                    // Update progress bar menjadi merah
+                    $('#single-upload-progress-bar').removeClass('progress-bar-info progress-bar-striped progress-bar-animated').addClass('progress-bar-danger');
+                    $('#single-upload-status').text('Upload gagal!');
+                    
+                    // Tampilkan error message
+                    $('#single-upload-error-message').text(errorMsg);
+                    $('#single-upload-error-info').show();
+                    $('#btn-close-single-progress').show();
+                }
+            });
+        } else {
+            // Jika link drive, submit normal tanpa progress
+            this.submit();
+        }
+        
+        return false;
+    });
+    
+    // Handle close button di progress modal
+    $('#btn-close-single-progress').on('click', function() {
+        $('#uploadProgressModal').modal('hide');
+        // Kembali ke form tambah
+        $('#tambahData').modal('show');
+        // Reset form
+        $('#formTambahArsip')[0].reset();
         toggleFileInput();
     });
     
