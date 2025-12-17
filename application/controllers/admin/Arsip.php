@@ -533,7 +533,7 @@ class Arsip extends CI_Controller {
                     'link_drive'             => NULL,
                     'nama_file'              => $upload_data['file_name'],
                     'path_file'              => $config['upload_path'] . $upload_data['file_name'],
-                    'ukuran_file'            => $upload_data['file_size'],
+                    'ukuran_file'            => $upload_data['file_size'] * 1024,
                     'tipe_file'              => $upload_data['file_type'],
                     'createDate'             => $createDate,
                     'created_by'             => $user_id
@@ -705,7 +705,7 @@ class Arsip extends CI_Controller {
             $upload_data = $this->upload->data();
             $nama_file = $upload_data['file_name'];
             $path_file = $config['upload_path'] . $nama_file;
-            $ukuran_file = $upload_data['file_size'];
+            $ukuran_file = $upload_data['file_size'] * 1024;
             $tipe_file = $upload_data['file_type'];
         }
         
@@ -994,7 +994,7 @@ class Arsip extends CI_Controller {
                 $upload_data = $this->upload->data();
                 $data['nama_file'] = $upload_data['file_name'];
                 $data['path_file'] = $config['upload_path'] . $upload_data['file_name'];
-                $data['ukuran_file'] = $upload_data['file_size'];
+                $data['ukuran_file'] = $upload_data['file_size'] * 1024;
                 $data['tipe_file'] = $upload_data['file_type'];
             }
         }

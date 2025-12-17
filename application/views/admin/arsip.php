@@ -92,7 +92,7 @@
             if(isset($kategori_parent_id) && !empty($kategori_parent_id)) {
                 // Jika ada parent_id, kembali ke halaman kategori parent
                 $back_url = base_url('admin/arsip/kategori/' . $kategori_parent_id);
-                $back_text = 'Kembali ke Kategori Parent';
+                $back_text = 'Kembali ke Kategori Utama';
             } else {
                 // Jika tidak ada parent_id, kembali ke halaman utama kategori
                 $back_url = base_url('admin/arsip');
