@@ -633,9 +633,33 @@
                     <option value="Sangat Rahasia">Sangat Rahasia</option>
                 </select>
             </div>
+            
+            <!-- Progress Bar Container (Hidden by default) -->
+            <div id="upload-progress-container" style="display: none; margin-top: 20px;">
+                <div class="alert alert-info">
+                    <strong><i class="fa fa-spinner fa-spin"></i> Sedang mengupload file...</strong>
+                </div>
+                <div class="progress" style="height: 30px;">
+                    <div id="upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        <span id="upload-progress-text">0%</span>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <small id="upload-progress-detail" class="text-muted">
+                        Memproses file: <span id="current-file-name">-</span>
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                        Berhasil: <span id="success-count">0</span> | 
+                        Gagal: <span id="error-count">0</span> | 
+                        Total: <span id="total-count">0</span>
+                    </small>
+                </div>
+            </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal"><div class="fa fa-times"></div> Batal</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal" id="btn-cancel-upload"><div class="fa fa-times"></div> Batal</button>
             <button type="submit" class="btn btn-success" id="btn-bulk-upload"><div class="fa fa-upload"></div> Upload Semua</button>
           </div>
         </form>
@@ -1094,26 +1118,177 @@ $(document).ready(function() {
         
         if(files.length > 0) {
             var html = '<div class="alert alert-success"><strong>File yang dipilih (' + files.length + ' file):</strong><ul style="margin-bottom: 0; padding-left: 20px;">';
+            var totalSize = 0;
+            
             for(var i = 0; i < files.length; i++) {
                 var fileSize = (files[i].size / 1024 / 1024).toFixed(2);
+                totalSize += files[i].size;
                 html += '<li>' + files[i].name + ' (' + fileSize + ' MB)</li>';
             }
-            html += '</ul></div>';
+            
+            var totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+            html += '</ul><strong>Total ukuran: ' + totalSizeMB + ' MB</strong></div>';
             fileList.html(html);
         }
     });
     
-    // Bulk Upload - Validasi sebelum submit
+    // Bulk Upload - Validasi sebelum submit dengan AJAX
     $('#formBulkUpload').on('submit', function(e) {
+        e.preventDefault();
+        
         var files = $('#files_arsip')[0].files;
         if(files.length === 0) {
-            e.preventDefault();
             alert('Pilih minimal 1 file untuk diupload!');
             return false;
         }
         
-        // Tampilkan loading
+        // Tampilkan progress bar
+        $('#upload-progress-container').show();
         $('#btn-bulk-upload').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Uploading...');
+        $('#btn-cancel-upload').prop('disabled', true);
+        
+        // Reset progress
+        updateProgress(0, 0, 0, files.length, 'Memulai upload...');
+        
+        // Buat FormData
+        var formData = new FormData(this);
+        
+        // Pastikan file terkirim dengan benar - append file secara eksplisit
+        // Hapus dulu jika ada (untuk menghindari duplikasi)
+        formData.delete('files_arsip[]');
+        for(var i = 0; i < files.length; i++) {
+            formData.append('files_arsip[]', files[i]);
+        }
+        
+        // Debug: log jumlah file dan ukuran
+        var totalSize = Array.from(files).reduce((sum, f) => sum + f.size, 0);
+        console.log('Jumlah file yang akan diupload:', files.length);
+        console.log('Total ukuran:', (totalSize / 1024 / 1024).toFixed(2) + ' MB');
+        
+        // Validasi: pastikan file benar-benar ada di FormData
+        if(!formData.has('files_arsip[]')) {
+            alert('Error: File tidak dapat ditambahkan ke FormData. Silakan coba lagi.');
+            $('#upload-progress-container').hide();
+            $('#btn-bulk-upload').prop('disabled', false).html('<div class="fa fa-upload"></div> Upload Semua');
+            $('#btn-cancel-upload').prop('disabled', false);
+            return false;
+        }
+        
+        // Submit via AJAX
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            cache: false,
+            xhr: function() {
+                var xhr = new window.XMLHttpRequest();
+                return xhr;
+            },
+            success: function(response) {
+                // Parse response jika string
+                if(typeof response === 'string') {
+                    try {
+                        response = JSON.parse(response);
+                    } catch(e) {
+                        // Jika bukan JSON, anggap sukses
+                        response = {success: true, message: response};
+                    }
+                }
+                
+                if(response.success) {
+                    updateProgress(100, response.success_count || 0, response.error_count || 0, 
+                                 response.success_count + response.error_count || 0, 'Upload selesai!');
+                    
+                    // Tunggu 2 detik lalu reload
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    alert('Error: ' + (response.message || 'Upload gagal'));
+                    $('#upload-progress-container').hide();
+                    $('#btn-bulk-upload').prop('disabled', false).html('<div class="fa fa-upload"></div> Upload Semua');
+                    $('#btn-cancel-upload').prop('disabled', false);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Upload error:', error, xhr);
+                var errorMsg = 'Terjadi kesalahan saat upload: ' + error;
+                
+                // Cek apakah error karena POST terpotong
+                if(xhr.status === 0 || xhr.status === 413) {
+                    errorMsg = 'Upload gagal! Kemungkinan ukuran file melebihi limit PHP server. ';
+                    errorMsg += 'Silakan tingkatkan post_max_size dan upload_max_filesize di php.ini. ';
+                    errorMsg += 'Atau coba upload file dengan ukuran lebih kecil.';
+                } else if(xhr.responseText) {
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if(response.message) {
+                            errorMsg = response.message;
+                        }
+                    } catch(e) {
+                        // Bukan JSON, gunakan error default
+                    }
+                }
+                
+                alert(errorMsg);
+                $('#upload-progress-container').hide();
+                $('#btn-bulk-upload').prop('disabled', false).html('<div class="fa fa-upload"></div> Upload Semua');
+                $('#btn-cancel-upload').prop('disabled', false);
+            }
+        });
+        
+        // Mulai polling progress
+        var progressInterval = setInterval(function() {
+            $.ajax({
+                url: '<?php echo base_url("admin/arsip/get_upload_progress"); ?>',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if(response.success && response.progress) {
+                        var progress = response.progress;
+                        var percentage = progress.percentage || 0;
+                        var processed = progress.processed || 0;
+                        var success = progress.success || 0;
+                        var error = progress.error || 0;
+                        var total = progress.total || 0;
+                        var currentFile = progress.current_file || 'Memproses...';
+                        
+                        updateProgress(percentage, success, error, total, currentFile);
+                        
+                        // Jika sudah selesai, stop polling
+                        if(progress.status === 'completed') {
+                            clearInterval(progressInterval);
+                        }
+                    }
+                },
+                error: function() {
+                    // Ignore error saat polling
+                }
+            });
+        }, 500); // Poll setiap 500ms
+        
+        return false;
     });
+    
+    // Function untuk update progress bar
+    function updateProgress(percentage, success, error, total, currentFile) {
+        $('#upload-progress-bar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+        $('#upload-progress-text').text(percentage.toFixed(1) + '%');
+        $('#current-file-name').text(currentFile);
+        $('#success-count').text(success);
+        $('#error-count').text(error);
+        $('#total-count').text(total);
+        
+        // Update warna progress bar berdasarkan status
+        var progressBar = $('#upload-progress-bar');
+        if(percentage === 100) {
+            progressBar.removeClass('progress-bar-animated').removeClass('progress-bar-striped')
+                      .removeClass('progress-bar-warning').addClass('progress-bar-success');
+        } else if(error > 0) {
+            progressBar.removeClass('progress-bar-success').addClass('progress-bar-warning');
+        }
+    }
 });
 </script> 

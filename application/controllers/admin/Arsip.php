@@ -88,6 +88,9 @@ class Arsip extends CI_Controller {
         $data['kategori_nama'] = $kategori->nama;
         $data['kategori_parent_id'] = $kategori->parent_id;
         
+        // Simpan kategori_id di session untuk bulk upload (jika POST data terpotong)
+        $this->session->set_userdata('current_kategori_id', $id);
+        
         // Ambil data kategori parent jika ada (untuk breadcrumb)
         $data['kategori_parent'] = null;
         if(!empty($kategori->parent_id)) {
@@ -277,31 +280,143 @@ class Arsip extends CI_Controller {
     {
         date_default_timezone_set('Asia/Jakarta');
         
-        // Kategori diambil dari form
-        $kategori_id                = $this->input->post('kategori_id');
-        $no_urut                    = $this->input->post('no_urut');
-        $kode_id                    = $this->input->post('kode_id');
-        $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan');
-        $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan');
-        $tahun                      = $this->input->post('tahun');
-        $jumlah_berkas              = $this->input->post('jumlah_berkas');
-        $asli_kopi                  = $this->input->post('asli_kopi');
-        $box                        = $this->input->post('box');
-        $klasifikasi_keamanan       = $this->input->post('klasifikasi_keamanan');
+        // Kategori diambil dari form, jika tidak ada ambil dari session (untuk handle POST terpotong)
+        $kategori_id = $this->input->post('kategori_id');
+        
+        // Jika kategori_id tidak ada di POST (kemungkinan POST terpotong karena file besar)
+        // Ambil dari session yang disimpan saat membuka halaman kategori
+        if(empty($kategori_id)) {
+            $kategori_id = $this->session->userdata('current_kategori_id');
+        }
+        
+        // Cek apakah $_POST kosong tapi ada file (indikasi POST terpotong karena limit PHP)
+        // Berikan informasi tapi tetap lanjutkan jika kategori_id ada di session
+        if(empty($_POST) && !empty($_FILES)) {
+            if(empty($kategori_id)) {
+                $error_msg = "POST data terpotong! Kemungkinan ukuran file melebihi limit PHP server. ";
+                $error_msg .= "Silakan tingkatkan post_max_size dan upload_max_filesize di php.ini. ";
+                $error_msg .= "Saat ini: post_max_size=" . ini_get('post_max_size') . ", upload_max_filesize=" . ini_get('upload_max_filesize');
+                
+                if($this->input->is_ajax_request()) {
+                    echo json_encode(array('success' => false, 'message' => $error_msg));
+                    return;
+                }
+                $this->session->set_flashdata('pesan', $error_msg);
+                redirect('admin/arsip');
+                return;
+            } else {
+                // Kategori_id berhasil diambil dari session, lanjutkan proses
+                // Ambil data lain dari session atau gunakan default
+            }
+        }
+        
+        // Ambil data form lainnya (jika POST terpotong, gunakan nilai default atau kosong)
+        $no_urut                    = $this->input->post('no_urut') ?: null;
+        $kode_id                    = $this->input->post('kode_id') ?: null;
+        $indeks_pekerjaan           = $this->input->post('indeks_pekerjaan') ?: null;
+        $uraian_masalah_kegiatan    = $this->input->post('uraian_masalah_kegiatan') ?: null;
+        $tahun                      = $this->input->post('tahun') ?: null;
+        $jumlah_berkas              = $this->input->post('jumlah_berkas') ?: null;
+        $asli_kopi                  = $this->input->post('asli_kopi') ?: null;
+        $box                        = $this->input->post('box') ?: null;
+        $klasifikasi_keamanan       = $this->input->post('klasifikasi_keamanan') ?: null;
         $createDate                 = date('Y-m-d H:i:s');
         
         // Validasi kategori
         if(empty($kategori_id)) {
-            $this->session->set_flashdata('pesan', 'Kategori tidak valid!');
+            $error_msg = 'Kategori tidak valid! Pastikan kategori sudah dipilih.';
+            
+            if($this->input->is_ajax_request()) {
+                echo json_encode(array('success' => false, 'message' => $error_msg));
+                return;
+            }
+            $this->session->set_flashdata('pesan', $error_msg);
             redirect('admin/arsip');
             return;
         }
         
-        // Validasi file
-        if(empty($_FILES['files_arsip']['name'][0])) {
-            $this->session->set_flashdata('pesan', 'Pilih minimal 1 file untuk diupload!');
-            redirect('admin/arsip/kategori/' . $kategori_id);
+        // Validasi file - cek dengan berbagai cara untuk handle POST terpotong
+        $files = null;
+        $file_count = 0;
+        
+        // Cek apakah $_FILES['files_arsip'] ada dan valid
+        if(isset($_FILES['files_arsip']) && is_array($_FILES['files_arsip'])) {
+            $files = $_FILES['files_arsip'];
+            
+            // Cek apakah ada file yang terkirim
+            if(isset($files['name']) && is_array($files['name'])) {
+                $file_count = count($files['name']);
+                
+                // Cek apakah ada minimal 1 file dengan nama tidak kosong
+                $has_valid_file = false;
+                for($i = 0; $i < $file_count; $i++) {
+                    if(!empty($files['name'][$i]) && $files['error'][$i] !== UPLOAD_ERR_NO_FILE) {
+                        $has_valid_file = true;
+                        break;
+                    }
+                }
+                
+                if(!$has_valid_file) {
+                    $file_count = 0;
+                }
+            }
+        }
+        
+        // Jika tidak ada file yang valid
+        if($file_count == 0 || $files === null) {
+            $error_msg = 'Pilih minimal 1 file untuk diupload!';
+            
+            // Cek berbagai kemungkinan penyebab file tidak terkirim
+            $content_length = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+            $post_max_size = $this->parseSize(ini_get('post_max_size'));
+            
+            // Jika POST kosong tapi ada CONTENT_LENGTH, kemungkinan POST terpotong
+            if(empty($_POST) && $content_length > 0) {
+                if($content_length > $post_max_size) {
+                    $error_msg = "File tidak terkirim karena POST data terpotong! ";
+                    $error_msg .= "Ukuran request (" . $this->formatBytes($content_length) . ") melebihi post_max_size (" . ini_get('post_max_size') . "). ";
+                    $error_msg .= "Silakan tingkatkan post_max_size di php.ini atau kurangi ukuran file.";
+                } else {
+                    $error_msg = "File tidak terkirim! Kemungkinan ada masalah dengan konfigurasi server. ";
+                    $error_msg .= "Cek: post_max_size=" . ini_get('post_max_size') . ", upload_max_filesize=" . ini_get('upload_max_filesize');
+                }
+            } elseif($content_length > 0 && $content_length > $post_max_size) {
+                // Ada request tapi melebihi limit
+                $error_msg = "Ukuran file terlalu besar! ";
+                $error_msg .= "Ukuran request (" . $this->formatBytes($content_length) . ") melebihi post_max_size (" . ini_get('post_max_size') . "). ";
+                $error_msg .= "Silakan tingkatkan post_max_size di php.ini atau kurangi ukuran file.";
+            } elseif(!empty($_FILES) && !isset($_FILES['files_arsip'])) {
+                // Ada file lain tapi bukan files_arsip
+                $error_msg = "File tidak terkirim dengan benar. Pastikan field name adalah 'files_arsip[]'.";
+            }
+            
+            if($this->input->is_ajax_request()) {
+                echo json_encode(array('success' => false, 'message' => $error_msg));
+                return;
+            }
+            $this->session->set_flashdata('pesan', $error_msg);
+            if(!empty($kategori_id)) {
+                redirect('admin/arsip/kategori/' . $kategori_id);
+            } else {
+                redirect('admin/arsip');
+            }
             return;
+        }
+        
+        // Cek error upload yang disebabkan oleh limit PHP (hanya untuk informasi)
+        for($i = 0; $i < $file_count; $i++) {
+            if($files['error'][$i] === UPLOAD_ERR_INI_SIZE || $files['error'][$i] === UPLOAD_ERR_FORM_SIZE) {
+                $error_msg = "File " . ($i + 1) . " (" . $files['name'][$i] . ") melebihi limit PHP server. ";
+                $error_msg .= "Tingkatkan upload_max_filesize di php.ini (saat ini: " . ini_get('upload_max_filesize') . ")";
+                
+                if($this->input->is_ajax_request()) {
+                    echo json_encode(array('success' => false, 'message' => $error_msg));
+                    return;
+                }
+                $this->session->set_flashdata('pesan', $error_msg);
+                redirect('admin/arsip/kategori/' . $kategori_id);
+                return;
+            }
         }
         
         // Ambil nama user dari session
@@ -309,7 +424,7 @@ class Arsip extends CI_Controller {
         $user = $this->m_model->get_where(array('id' => $user_id), 'tb_user')->row();
         $nama_pengisi = $user ? $user->nama : NULL;
         
-        // Default values
+        // Default values (jika POST terpotong, gunakan default)
         if(empty($jumlah_berkas)) {
             $jumlah_berkas = 1;
         }
@@ -334,14 +449,34 @@ class Arsip extends CI_Controller {
         $start_no_urut = !empty($no_urut) ? intval($no_urut) : null;
         $current_no_urut = $start_no_urut;
         
-        // Proses setiap file
-        $files = $_FILES['files_arsip'];
-        $file_count = count($files['name']);
+        // Proses setiap file (files sudah didefinisikan di atas)
+        
+        // Inisialisasi progress tracking
+        $progress_key = 'bulk_upload_progress_' . $user_id;
+        $this->session->set_userdata($progress_key, array(
+            'total' => $file_count,
+            'processed' => 0,
+            'success' => 0,
+            'error' => 0,
+            'status' => 'processing',
+            'current_file' => ''
+        ));
         
         for($i = 0; $i < $file_count; $i++) {
+            // Update progress - current file
+            $progress = $this->session->userdata($progress_key);
+            $progress['current_file'] = $files['name'][$i];
+            $this->session->set_userdata($progress_key, $progress);
+            
             if($files['error'][$i] !== UPLOAD_ERR_OK) {
                 $errors[] = "File " . ($i + 1) . ": Error upload (" . $files['name'][$i] . ")";
                 $error_count++;
+                
+                // Update progress
+                $progress = $this->session->userdata($progress_key);
+                $progress['processed'] = $i + 1;
+                $progress['error'] = $error_count;
+                $this->session->set_userdata($progress_key, $progress);
                 continue;
             }
             
@@ -424,7 +559,20 @@ class Arsip extends CI_Controller {
                 $errors[] = "File " . ($i + 1) . " (" . $files['name'][$i] . "): " . $error;
                 $error_count++;
             }
+            
+            // Update progress setelah setiap file diproses
+            $progress = $this->session->userdata($progress_key);
+            $progress['processed'] = $i + 1;
+            $progress['success'] = $success_count;
+            $progress['error'] = $error_count;
+            $this->session->set_userdata($progress_key, $progress);
         }
+        
+        // Update progress - selesai
+        $progress = $this->session->userdata($progress_key);
+        $progress['status'] = 'completed';
+        $progress['processed'] = $file_count;
+        $this->session->set_userdata($progress_key, $progress);
         
         // Set pesan hasil
         $pesan = "Bulk upload selesai! Berhasil: $success_count, Gagal: $error_count";
@@ -434,8 +582,55 @@ class Arsip extends CI_Controller {
             $pesan .= "<br>Ada " . count($errors) . " error. Silakan cek log untuk detail.";
         }
         
+        // Jika request AJAX, return JSON
+        if($this->input->is_ajax_request()) {
+            echo json_encode(array(
+                'success' => true,
+                'message' => $pesan,
+                'success_count' => $success_count,
+                'error_count' => $error_count,
+                'errors' => $errors
+            ));
+            return;
+        }
+        
         $this->session->set_flashdata('pesan', $pesan);
         redirect('admin/arsip/kategori/' . $kategori_id);
+    }
+    
+    // Endpoint untuk mendapatkan progress upload
+    public function get_upload_progress()
+    {
+        $user_id = $this->session->userdata('id');
+        if(!$user_id) {
+            echo json_encode(array('success' => false, 'message' => 'Unauthorized'));
+            return;
+        }
+        
+        $progress_key = 'bulk_upload_progress_' . $user_id;
+        $progress = $this->session->userdata($progress_key);
+        
+        if(!$progress) {
+            echo json_encode(array(
+                'success' => false,
+                'message' => 'No upload in progress',
+                'progress' => null
+            ));
+            return;
+        }
+        
+        // Hitung persentase
+        $percentage = 0;
+        if($progress['total'] > 0) {
+            $percentage = round(($progress['processed'] / $progress['total']) * 100, 2);
+        }
+        
+        $progress['percentage'] = $percentage;
+        
+        echo json_encode(array(
+            'success' => true,
+            'progress' => $progress
+        ));
     }
     
     public function insert()
@@ -1519,6 +1714,28 @@ class Arsip extends CI_Controller {
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('php://output');
         exit;
+    }
+    
+    // Helper function untuk parse size string (e.g., "70M", "2G") menjadi bytes
+    private function parseSize($size)
+    {
+        if(is_numeric($size)) {
+            return (int)$size;
+        }
+        
+        $unit = strtoupper(substr($size, -1));
+        $value = (float)substr($size, 0, -1);
+        
+        switch($unit) {
+            case 'G':
+                return $value * 1024 * 1024 * 1024;
+            case 'M':
+                return $value * 1024 * 1024;
+            case 'K':
+                return $value * 1024;
+            default:
+                return (int)$value;
+        }
     }
     
     private function formatBytes($bytes, $precision = 2)
